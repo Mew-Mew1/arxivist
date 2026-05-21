@@ -1,3 +1,5 @@
+<img width="874" height="658" alt="Gemini_Generated_Image_ci0ty8ci0ty8ci0t" src="https://github.com/user-attachments/assets/e20657eb-5415-4457-be60-72ecf38d6997" />
+
 # ArXivist
 
 **ArXivist** converts scientific papers into fully executable, reproducible codebases — automatically.
