@@ -1,0 +1,452 @@
+{
+  "paper_id": "arxiv_2210_03629",
+  "plan_version": 1,
+  "created_at": "2026-07-22T00:00:00Z",
+  "framework": {
+    "primary": "pytorch",
+    "python_version": "3.10+",
+    "cuda_required": false,
+    "cuda_min_version": null,
+    "use_huggingface": true,
+    "config_library": "yaml",
+    "reasoning": "ReAct's main experiments (HotpotQA, FEVER, ALFWorld, WebShop) are pure few-shot in-context prompting against a frozen LLM served over an API (PaLM-540B in the paper; not publicly available). Reproduction therefore centers on an LLM-agnostic prompting/orchestration layer, not a custom neural network -- so no deep-learning framework is strictly required for the core loop. PyTorch is selected as the 'primary' framework only because: (1) the paper's secondary finetuning experiment (Appendix B.1, PaLM-8B/62B decoders trained on 3,000 bootstrapped trajectories) is a standard causal-LM finetuning job, which is most reproducibly implemented via HuggingFace Transformers/PyTorch on an open-weight substitute model; (2) SIR implementation_assumption #1 (confidence 0.95) mandates substituting PaLM-540B with an accessible LLM, and both API-based (GPT-4-class) and open-weight (HF) substitutes should be supported behind a common interface. YAML is used for config (no need for Hydra's multirun/sweep features here). use_huggingface=true covers both the finetuning stage and an optional open-weight inference backend."
+  },
+  "module_hierarchy": [
+    {
+      "path": "src/react_agent/__init__.py",
+      "description": "Package init, exposes ReactAgent and core action-space types",
+      "sir_modules_mapped": [],
+      "classes": []
+    },
+    {
+      "path": "src/react_agent/agents/react_agent.py",
+      "description": "Core ReAct orchestration loop: implements the augmented action space policy pi(a_t | c_t), Thought/Action dispatch, and context accumulation.",
+      "sir_modules_mapped": ["Frozen Policy LLM", "Thought Generator (Reasoning Trace Emitter)", "Context Aggregator / Working Memory"],
+      "classes": [
+        {
+          "name": "ReactAgent",
+          "base_class": "object",
+          "public_methods": [
+            { "name": "__init__", "signature": "(self, llm_client: LLMClient, action_space: ActionSpace, prompt_template: PromptTemplate, max_steps: int, thought_mode: str = 'dense'|'sparse')", "returns": "None" },
+            { "name": "step", "signature": "(self, context: TrajectoryContext) -> AugmentedAction", "returns": "AugmentedAction (Thought | DomainAction)" },
+            { "name": "run_episode", "signature": "(self, task_input: str, env: BaseEnvironment) -> EpisodeResult", "returns": "EpisodeResult (trajectory, final_answer, success, n_steps)" },
+            { "name": "reset", "signature": "(self) -> None", "returns": "None" }
+          ]
+        },
+        {
+          "name": "TrajectoryContext",
+          "base_class": "object",
+          "public_methods": [
+            { "name": "append_thought", "signature": "(self, thought: str) -> None", "returns": "None" },
+            { "name": "append_action_observation", "signature": "(self, action: str, observation: str) -> None", "returns": "None" },
+            { "name": "to_prompt_string", "signature": "(self) -> str", "returns": "str" },
+            { "name": "n_env_steps", "signature": "(self) -> int", "returns": "int" }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/react_agent/agents/cot_sc.py",
+      "description": "Chain-of-Thought Self-Consistency baseline and the ReAct<->CoT-SC backoff heuristics.",
+      "sir_modules_mapped": ["CoT-SC Fallback Module"],
+      "classes": [
+        {
+          "name": "CoTSelfConsistency",
+          "base_class": "object",
+          "public_methods": [
+            { "name": "sample", "signature": "(self, question: str, n_samples: int = 21, temperature: float = 0.7) -> list[str]", "returns": "list of sampled final answers" },
+            { "name": "majority_vote", "signature": "(self, answers: list[str]) -> tuple[str, float]", "returns": "(answer, vote_fraction)" }
+          ]
+        },
+        {
+          "name": "ReactCotScRouter",
+          "base_class": "object",
+          "public_methods": [
+            { "name": "react_then_cotsc", "signature": "(self, question: str, max_react_steps: int) -> str", "returns": "final answer, backs off to CoT-SC if ReAct fails to Finish within max_react_steps" },
+            { "name": "cotsc_then_react", "signature": "(self, question: str, n_samples: int = 21) -> str", "returns": "final answer, backs off to ReAct if majority vote fraction < 0.5" }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/react_agent/envs/base_environment.py",
+      "description": "Abstract environment interface all task environments implement (defines the o_t <-> a_t contract).",
+      "sir_modules_mapped": ["Action Executor"],
+      "classes": [
+        {
+          "name": "BaseEnvironment",
+          "base_class": "abc.ABC",
+          "public_methods": [
+            { "name": "reset", "signature": "(self, task_instance: dict) -> str", "returns": "initial observation o_1" },
+            { "name": "step", "signature": "(self, action: str) -> tuple[str, bool, dict]", "returns": "(observation, done, info)" },
+            { "name": "action_space", "signature": "(self) -> ActionSpace", "returns": "ActionSpace" }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/react_agent/envs/wikipedia_env.py",
+      "description": "Simplified Wikipedia API environment used for HotpotQA/FEVER: implements search[entity], lookup[string], finish[answer].",
+      "sir_modules_mapped": ["Wikipedia Web API"],
+      "classes": [
+        {
+          "name": "WikipediaEnvironment",
+          "base_class": "BaseEnvironment",
+          "public_methods": [
+            { "name": "search", "signature": "(self, entity: str) -> str", "returns": "first 5 sentences of entity page, or top-5 similar entity suggestions" },
+            { "name": "lookup", "signature": "(self, query: str) -> str", "returns": "next sentence in current page containing query (Ctrl+F emulation)" },
+            { "name": "finish", "signature": "(self, answer: str) -> str", "returns": "terminal observation, ends episode" }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/react_agent/envs/alfworld_env.py",
+      "description": "Thin adapter wrapping the external ALFWorld text-game engine to the BaseEnvironment contract.",
+      "sir_modules_mapped": ["Action Executor"],
+      "classes": [
+        {
+          "name": "ALFWorldEnvironment",
+          "base_class": "BaseEnvironment",
+          "public_methods": [
+            { "name": "reset", "signature": "(self, task_instance: dict) -> str", "returns": "initial room description" },
+            { "name": "step", "signature": "(self, action: str) -> tuple[str, bool, dict]", "returns": "(observation, done, info) via alfworld TextWorld engine" }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/react_agent/envs/webshop_env.py",
+      "description": "Thin adapter wrapping the external WebShop environment to the BaseEnvironment contract; treats think[...] actions as no-op Thoughts routed back into context rather than environment calls.",
+      "sir_modules_mapped": ["Action Executor"],
+      "classes": [
+        {
+          "name": "WebShopEnvironment",
+          "base_class": "BaseEnvironment",
+          "public_methods": [
+            { "name": "reset", "signature": "(self, task_instance: dict) -> str", "returns": "initial search page / instruction" },
+            { "name": "step", "signature": "(self, action: str) -> tuple[str, bool, dict]", "returns": "(observation, done, info); info includes attribute coverage score" }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/react_agent/llm/llm_client.py",
+      "description": "Abstract LLM client interface decoupling the ReAct loop from any specific model backend (API or local HF model).",
+      "sir_modules_mapped": ["Frozen Policy LLM"],
+      "classes": [
+        {
+          "name": "LLMClient",
+          "base_class": "abc.ABC",
+          "public_methods": [
+            { "name": "generate", "signature": "(self, prompt: str, stop_sequences: list[str], temperature: float = 0.0, max_tokens: int = 256) -> str", "returns": "raw text continuation" }
+          ]
+        },
+        {
+          "name": "OpenAIClient",
+          "base_class": "LLMClient",
+          "public_methods": [
+            { "name": "generate", "signature": "(self, prompt: str, stop_sequences: list[str], temperature: float = 0.0, max_tokens: int = 256) -> str", "returns": "raw text continuation, calls Chat/Completions API" }
+          ]
+        },
+        {
+          "name": "HFLocalClient",
+          "base_class": "LLMClient",
+          "public_methods": [
+            { "name": "generate", "signature": "(self, prompt: str, stop_sequences: list[str], temperature: float = 0.0, max_tokens: int = 256) -> str", "returns": "raw text continuation from a local HuggingFace CausalLM (used for finetuned PaLM-8B/62B substitute checkpoints)" }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/react_agent/llm/action_parser.py",
+      "description": "Parses raw LLM text output into typed AugmentedAction objects (Thought vs DomainAction) per the a-hat in A union L split.",
+      "sir_modules_mapped": ["Thought Generator (Reasoning Trace Emitter)", "Action Executor"],
+      "classes": [
+        {
+          "name": "ActionParser",
+          "base_class": "object",
+          "public_methods": [
+            { "name": "parse", "signature": "(self, raw_text: str) -> AugmentedAction", "returns": "Thought or DomainAction with parsed action_name/args" }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/react_agent/data/hotpotqa_dataset.py",
+      "description": "Loads HotpotQA question-only validation split.",
+      "sir_modules_mapped": [],
+      "classes": [
+        { "name": "HotpotQADataset", "base_class": "torch.utils.data.Dataset", "public_methods": [
+          { "name": "__getitem__", "signature": "(self, idx: int) -> dict", "returns": "{'question': str, 'answer': str, 'id': str}" },
+          { "name": "__len__", "signature": "(self) -> int", "returns": "int" }
+        ] }
+      ]
+    },
+    {
+      "path": "src/react_agent/data/fever_dataset.py",
+      "description": "Loads FEVER claim-only validation split.",
+      "sir_modules_mapped": [],
+      "classes": [
+        { "name": "FeverDataset", "base_class": "torch.utils.data.Dataset", "public_methods": [
+          { "name": "__getitem__", "signature": "(self, idx: int) -> dict", "returns": "{'claim': str, 'label': str, 'id': str}" },
+          { "name": "__len__", "signature": "(self) -> int", "returns": "int" }
+        ] }
+      ]
+    },
+    {
+      "path": "src/react_agent/prompts/prompt_templates.py",
+      "description": "Stores and formats the few-shot in-context exemplar trajectories per task (HotpotQA:6, FEVER:3, ALFWorld:3-per-task-type x 6 permutations, WebShop:1-2).",
+      "sir_modules_mapped": ["Context Aggregator / Working Memory"],
+      "classes": [
+        {
+          "name": "PromptTemplate",
+          "base_class": "object",
+          "public_methods": [
+            { "name": "load", "signature": "(self, task_name: str, method: str) -> str", "returns": "formatted few-shot prefix string; method in {'standard','cot','act','react','react_im'}" },
+            { "name": "format_step", "signature": "(self, context: TrajectoryContext) -> str", "returns": "prompt string ready for LLMClient.generate" }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/react_agent/training/finetune.py",
+      "description": "Bootstraps 3,000 ReAct-generated trajectories to finetune smaller causal-LM checkpoints (PaLM-8B/62B substitute) to decode full (thought, action, observation) sequences. Corresponds to Appendix B.1.",
+      "sir_modules_mapped": ["Frozen Policy LLM"],
+      "classes": [
+        {
+          "name": "TrajectoryFinetuner",
+          "base_class": "object",
+          "public_methods": [
+            { "name": "build_dataset", "signature": "(self, trajectories: list[EpisodeResult]) -> torch.utils.data.Dataset", "returns": "tokenized (prompt, target trajectory) pairs" },
+            { "name": "train", "signature": "(self, model: PreTrainedModel, dataset: Dataset, config: TrainingConfig) -> PreTrainedModel", "returns": "finetuned model checkpoint" }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/react_agent/evaluation/metrics.py",
+      "description": "Computes EM (HotpotQA), Accuracy (FEVER), Success Rate (ALFWorld/WebShop), and WebShop attribute-coverage Score.",
+      "sir_modules_mapped": [],
+      "classes": [
+        {
+          "name": "MetricsCalculator",
+          "base_class": "object",
+          "public_methods": [
+            { "name": "exact_match", "signature": "(self, pred: str, gold: str) -> float", "returns": "0.0/1.0" },
+            { "name": "accuracy", "signature": "(self, preds: list[str], golds: list[str]) -> float", "returns": "float in [0,1]" },
+            { "name": "success_rate", "signature": "(self, episode_results: list[EpisodeResult]) -> float", "returns": "float in [0,1]" },
+            { "name": "webshop_score", "signature": "(self, chosen_attrs: set, requested_attrs: set) -> float", "returns": "ASSUMED normalization: matched/requested, see SIR ambiguity #3" }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/react_agent/utils/config.py",
+      "description": "YAML config loader/validator and dataclasses mirroring config_schema below.",
+      "sir_modules_mapped": [],
+      "classes": [
+        { "name": "AgentConfig", "base_class": "object", "public_methods": [
+          { "name": "from_yaml", "signature": "(cls, path: str) -> 'AgentConfig'", "returns": "AgentConfig" }
+        ] }
+      ]
+    }
+  ],
+  "tensor_flows": [
+    {
+      "name": "ReAct single-step decision (HotpotQA/FEVER, dense-thought)",
+      "input": { "name": "c_t", "shape": "variable-length text (few-shot prefix + trajectory so far)", "dtype": "str/token_ids" },
+      "output": { "name": "a_hat_t", "shape": "variable-length text (one Thought or one Action)", "dtype": "str" },
+      "steps": [
+        "TrajectoryContext.to_prompt_string() serializes (o_1,a_1,...,o_{t-1},a_{t-1},o_t) with the loaded few-shot PromptTemplate prefix",
+        "LLMClient.generate(prompt, stop_sequences=['\\n']) produces raw_text for the next 'Thought i:' or 'Action i:' line",
+        "ActionParser.parse(raw_text) classifies raw_text as Thought (if line starts with 'Thought') or DomainAction (search[...]/lookup[...]/finish[...])",
+        "if Thought: TrajectoryContext.append_thought(thought) -> context updated, no environment call, loop continues to generate the following Action",
+        "if DomainAction: BaseEnvironment.step(action) -> (observation, done, info); TrajectoryContext.append_action_observation(action, observation)",
+        "if done (finish[...] called or done=True): ReactAgent.run_episode returns EpisodeResult(trajectory, final_answer=answer, success=..., n_steps=t)",
+        "else: loop back to prompt generation for step t+1, subject to max_steps cap (7 for HotpotQA, 5 for FEVER per SIR training_pipeline/backoff heuristic)"
+      ]
+    },
+    {
+      "name": "ReAct sparse-thought decision loop (ALFWorld/WebShop)",
+      "input": { "name": "c_t", "shape": "variable-length text (task description + trajectory so far)", "dtype": "str/token_ids" },
+      "output": { "name": "a_t", "shape": "variable-length text domain action", "dtype": "str" },
+      "steps": [
+        "Same generate/parse loop as dense-thought variant, but thought_mode='sparse' relaxes the alternation constraint: the LLM decides for itself whether to emit a Thought before the next Action",
+        "BaseEnvironment.step is called only for DomainAction outputs; Thought outputs never reach the environment",
+        "Episode terminates when env returns done=True (task success/failure) or max_steps is reached"
+      ]
+    },
+    {
+      "name": "CoT-SC -> ReAct / ReAct -> CoT-SC routing",
+      "input": { "name": "question_or_claim", "shape": "single text string", "dtype": "str" },
+      "output": { "name": "final_answer", "shape": "single text string", "dtype": "str" },
+      "steps": [
+        "ReactCotScRouter.react_then_cotsc: run ReAct up to max_react_steps; if no finish[...] action was produced, fall back to CoTSelfConsistency.sample(n=21, temp=0.7) + majority_vote",
+        "ReactCotScRouter.cotsc_then_react: run CoTSelfConsistency.sample(n=21, temp=0.7); compute majority_vote fraction; if fraction < 0.5, fall back to full ReAct episode and use its answer instead"
+      ]
+    },
+    {
+      "name": "Finetuning forward/backward pass (Appendix B.1 substitute)",
+      "input": { "name": "tokenized_trajectory", "shape": "[B, T] int64 token ids (prompt+target concatenated)", "dtype": "int64" },
+      "output": { "name": "loss", "shape": "scalar float32", "dtype": "float32" },
+      "steps": [
+        "TrajectoryFinetuner.build_dataset tokenizes 3,000 ReAct-generated (question/claim, full trajectory) pairs, with prompt tokens masked out of the loss",
+        "model(input_ids, labels=masked_labels) -> standard causal LM cross-entropy loss over target trajectory tokens (all thoughts+actions+observations, ASSUMED objective per SIR implementation_assumption)",
+        "loss.backward(); optimizer.step() for training_steps as specified per model size / method (4000 for ReAct/Act, 2000-1000 for Standard/CoT depending on model size, batch_size=64)"
+      ]
+    }
+  ],
+  "config_schema": {
+    "model": {
+      "llm_backend": "openai  # ASSUMED: PaLM-540B is not publicly accessible (SIR implementation_assumption, confidence 0.95); substitute with GPT-4-class API or HFLocalClient",
+      "model_name": "gpt-4o-mini  # ASSUMED substitute; paper's own substitute ablation used GPT-3 text-davinci-002 (Appendix A.1)",
+      "temperature_main_prompting": 0.0,
+      "temperature_cotsc": 0.7,
+      "cotsc_n_samples": 21,
+      "thought_mode": "dense  # 'dense' for HotpotQA/FEVER, 'sparse' for ALFWorld/WebShop"
+    },
+    "training": {
+      "finetune_enabled": false,
+      "finetune_batch_size": 64,
+      "finetune_steps_react_act": 4000,
+      "finetune_steps_standard_cot_8b": 2000,
+      "finetune_steps_standard_cot_62b": 1000,
+      "optimizer": "adamw  # ASSUMED: literature default for PaLM-class finetuning, SIR confidence 0.55",
+      "learning_rate": "null  # NOT SPECIFIED in paper text; ASSUMED, must be swept/tuned, SIR confidence 0.2"
+    },
+    "data": {
+      "hotpotqa_split": "validation",
+      "hotpotqa_n_eval": 500,
+      "fever_split": "validation",
+      "alfworld_n_eval_games": 134,
+      "webshop_n_eval_instructions": 500
+    },
+    "evaluation": {
+      "hotpotqa_max_steps": 7,
+      "fever_max_steps": 5,
+      "alfworld_prompt_permutations": 6,
+      "metric_hotpotqa": "exact_match",
+      "metric_fever": "accuracy",
+      "metric_alfworld": "success_rate",
+      "metric_webshop": ["score", "success_rate"]
+    },
+    "hardware": {
+      "device": "cpu  # API-driven agent loop needs no GPU; GPU only required if finetune_enabled=true or HFLocalClient is used",
+      "precision": "bf16  # ASSUMED for optional local finetuning runs, SIR confidence 0.2 (not stated in paper)",
+      "num_workers": 4
+    }
+  },
+  "dependencies": {
+    "runtime": [
+      { "package": "openai", "version": ">=1.30.0", "reason": "Primary substitute LLM API client (PaLM-540B not publicly accessible; SIR assumption)" },
+      { "package": "transformers", "version": ">=4.41.0", "reason": "Local HF causal LM backend + finetuning of open-weight substitutes for the Appendix B.1 experiment" },
+      { "package": "torch", "version": ">=2.2.0", "reason": "Backend for HuggingFace finetuning path" },
+      { "package": "accelerate", "version": ">=0.30.0", "reason": "Multi-GPU/precision handling for finetuning" },
+      { "package": "wikipedia", "version": ">=1.4.0", "reason": "Lightweight Wikipedia search/lookup client backing the WikipediaEnvironment (search[entity], lookup[string])" },
+      { "package": "alfworld", "version": ">=0.3.3", "reason": "Official ALFWorld TextWorld engine, wrapped by ALFWorldEnvironment" },
+      { "package": "pyyaml", "version": ">=6.0", "reason": "Config file loading" },
+      { "package": "tenacity", "version": ">=8.2.0", "reason": "Retry/backoff wrapper around LLM API calls" },
+      { "package": "pydantic", "version": ">=2.7.0", "reason": "Typed AugmentedAction / EpisodeResult data models" }
+    ],
+    "dev": [
+      { "package": "pytest", "version": ">=8.0.0" },
+      { "package": "pytest-mock", "version": ">=3.14.0" },
+      { "package": "ruff", "version": ">=0.4.0" },
+      { "package": "mypy", "version": ">=1.10.0" }
+    ]
+  },
+  "entrypoints": [
+    {
+      "filename": "train.py",
+      "purpose": "Runs the optional finetuning experiment (Appendix B.1): bootstraps trajectories and finetunes a substitute open-weight causal LM to imitate ReAct/Act/Standard/CoT trajectories.",
+      "cli_args": [
+        { "flag": "--method", "type": "str", "required": true, "default": null, "help": "one of standard|cot|act|react" },
+        { "flag": "--model-size", "type": "str", "required": true, "default": "8b", "help": "substitute model size tag, e.g. 8b|62b" },
+        { "flag": "--trajectories-path", "type": "str", "required": true, "default": null, "help": "path to 3000 bootstrapped ReAct trajectories" },
+        { "flag": "--batch-size", "type": "int", "required": false, "default": 64, "help": "per SIR training_pipeline.batch_size" },
+        { "flag": "--steps", "type": "int", "required": false, "default": 4000, "help": "training steps; defaults per SIR (4000 react/act, 2000/1000 standard/cot)" },
+        { "flag": "--output-dir", "type": "str", "required": true, "default": null, "help": "checkpoint output directory" }
+      ]
+    },
+    {
+      "filename": "evaluate.py",
+      "purpose": "Runs a full prompting-method x task evaluation sweep (reproduces Tables 1, 3, 4) and writes per-episode trajectories + aggregate metrics.",
+      "cli_args": [
+        { "flag": "--task", "type": "str", "required": true, "default": null, "help": "one of hotpotqa|fever|alfworld|webshop" },
+        { "flag": "--method", "type": "str", "required": true, "default": "react", "help": "one of standard|cot|cot_sc|act|react|react_im|cotsc_react|react_cotsc" },
+        { "flag": "--config", "type": "str", "required": true, "default": "configs/config.yaml", "help": "path to YAML config" },
+        { "flag": "--n-eval", "type": "int", "required": false, "default": null, "help": "override number of eval instances (default: full split per SIR)" },
+        { "flag": "--output-dir", "type": "str", "required": true, "default": "results/", "help": "directory for trajectories.jsonl and metrics.json" }
+      ]
+    },
+    {
+      "filename": "inference.py",
+      "purpose": "Runs a single ReAct episode on one user-supplied question/claim/task instance and prints the interleaved Thought/Action/Observation trace.",
+      "cli_args": [
+        { "flag": "--task", "type": "str", "required": true, "default": null, "help": "one of hotpotqa|fever|alfworld|webshop" },
+        { "flag": "--input", "type": "str", "required": true, "default": null, "help": "question text, claim text, or ALFWorld/WebShop task instance id" },
+        { "flag": "--method", "type": "str", "required": false, "default": "react", "help": "prompting method to use" },
+        { "flag": "--config", "type": "str", "required": true, "default": "configs/config.yaml", "help": "path to YAML config" }
+      ]
+    },
+    {
+      "filename": "human_edit_repl.py",
+      "purpose": "Interactive REPL reproducing the Appendix A.3 human-in-the-loop thought-editing demo: lets a human inspect and edit ReAct's thoughts mid-trajectory on ALFWorld.",
+      "cli_args": [
+        { "flag": "--task-instance", "type": "str", "required": true, "default": null, "help": "ALFWorld task instance id" },
+        { "flag": "--config", "type": "str", "required": true, "default": "configs/config.yaml", "help": "path to YAML config" }
+      ]
+    }
+  ],
+  "docker_spec": {
+    "base_image": "pytorch/pytorch:2.2.0-cuda12.1-cudnn8-runtime",
+    "system_deps": ["git", "build-essential", "curl"],
+    "workdir": "/workspace/react-agent",
+    "default_cmd": "python evaluate.py --task hotpotqa --method react --config configs/config.yaml"
+  },
+  "risk_assessment": [
+    {
+      "severity": "High",
+      "description": "PaLM-540B, the paper's primary model, is not publicly accessible. Any reproduction necessarily uses a different LLM, so absolute score reproduction (Table 1/3/4 numbers) is not guaranteed even with correct orchestration logic.",
+      "source": "implementation_assumptions[0], confidence 0.95",
+      "mitigation": "Implement LLMClient as an abstract interface with OpenAIClient and HFLocalClient backends; report results per-backend and compare relative trends (ReAct > Act, etc.) rather than claiming exact number parity. Mirror the paper's own GPT-3 ablation (Appendix A.1) as a sanity baseline."
+    },
+    {
+      "severity": "High",
+      "description": "Full few-shot exemplar prompts (Appendix C) are not present in the parsed PDF text, only illustrative fragments in Figure 1 and Tables 6-9.",
+      "source": "ambiguities[0], ambiguities[1]; confidence 0.5",
+      "mitigation": "Hand-author exemplar trajectories following the documented thought-type taxonomy (decompose goal, extract info, arithmetic/commonsense reasoning, track progress, handle exceptions, reformulate search) and validate qualitatively against the excerpted examples in the paper before large-scale eval runs. Flag PromptTemplate.load() output with a `# TODO: verify against paper Appendix C` marker."
+    },
+    {
+      "severity": "Medium",
+      "description": "Finetuning stage (Appendix B.1) hyperparameters -- optimizer, learning rate, schedule -- are unspecified in the parsed text.",
+      "source": "training_pipeline confidence 0.5; implementation_assumptions[4], confidence 0.55",
+      "mitigation": "Default to AdamW with a standard warmup+cosine/linear decay schedule and expose all values via config.yaml with `# ASSUMED` comments; treat train.py's --steps/--batch-size as the only paper-grounded values and everything else as tunable."
+    },
+    {
+      "severity": "Medium",
+      "description": "WebShop attribute-coverage 'Score' metric's exact normalization formula is not fully specified in the parsed text.",
+      "source": "ambiguities[2], confidence 0.55",
+      "mitigation": "Implement MetricsCalculator.webshop_score using the assumed matched/requested ratio, but keep it swappable via config.evaluation and cross-check against the official WebShop repository's scoring function (Yao et al. 2022) before trusting absolute numbers."
+    },
+    {
+      "severity": "Medium",
+      "description": "ALFWorld and WebShop rely on external simulator packages (alfworld, WebShop repo) with their own installation/data-download requirements (large asset downloads, potential version drift).",
+      "source": "evaluation_protocol.datasets; general reproducibility risk",
+      "mitigation": "Pin alfworld package version, document manual `alfworld-download` data step in README, and implement BaseEnvironment adapters so a missing dependency degrades gracefully (HotpotQA/FEVER experiments remain runnable without ALFWorld/WebShop installed)."
+    },
+    {
+      "severity": "Low",
+      "description": "Wikipedia API search/lookup fallback behavior (top-5 similar entity suggestion algorithm) is not fully specified.",
+      "source": "ambiguities[0], confidence 0.6",
+      "mitigation": "Use the standard `wikipedia` package's built-in search-suggest and disambiguation handling, which closely mirrors the described fallback behavior; document the substitution in README."
+    },
+    {
+      "severity": "Low",
+      "description": "The step cap for the ReAct<->CoT-SC backoff (7 steps HotpotQA, 5 steps FEVER) is explicitly stated, but whether it counts only environment-interacting Actions or also intervening Thoughts is not 100% unambiguous from the text.",
+      "source": "implementation_assumptions[6], confidence 0.85",
+      "mitigation": "Implement TrajectoryContext.n_env_steps() to count only DomainAction/Observation pairs (matching 'steps' language used with search/lookup actions in Section 3.2), and expose an alternate total-turn counting mode behind a config flag for sensitivity testing."
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "paper_id": "arxiv_2210_03629",
+  "title": "ReAct: Synergizing Reasoning and Acting in Language Models",
+  "authors": ["Shunyu Yao", "Jeffrey Zhao", "Dian Yu", "Nan Du", "Izhak Shafran", "Karthik Narasimhan", "Yuan Cao"],
+  "domain": "NLP",
+  "arxiv_id": "2210.03629v3",
+  "version": 1,
+  "created_at": "2026-07-22T00:00:00Z",
+  "last_updated": "2026-07-22T00:00:00Z",
+  "sir_confidence": 0.75,
+  "stages_with_data": ["stage1_paper_parser", "stage2_sir_registry"],
+  "has_comparison_report": false,
+  "repo_path": "paper-repos/arxiv_2210_03629/",
+  "update_history": [
+    {
+      "version": 1,
+      "timestamp": "2026-07-22T00:00:00Z",
+      "reason": "initial commit",
+      "changed_sections": ["all"]
+    }
+  ]
+}
