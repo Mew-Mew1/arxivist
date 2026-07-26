@@ -1,0 +1,85 @@
+# =============================================================================
+# Debug config: same schema as configs/config.yaml but with drastically
+# reduced eval sizes / step counts, for a fast local smoke test.
+# Loaded via `--config configs/config_debug.yaml`.
+# =============================================================================
+
+seed: 42
+deterministic: false
+
+model:
+  llm_backend: openai        # "openai" = any OpenAI-API-compatible endpoint; see configs/config.yaml
+  provider: deepseek
+  model_name: deepseek-chat
+  base_url: null
+  api_key_env_var: null
+  hf_model_name_or_path: null
+  temperature_main_prompting: 0.0
+  temperature_cotsc: 0.7
+  cotsc_n_samples: 3        # reduced from 21 for speed
+  max_tokens_per_step: 128
+  thought_mode: dense
+
+action_space:
+  hotpotqa_fever: ["search", "lookup", "finish"]
+
+routing:
+  hotpotqa_max_react_steps: 3   # reduced from 7
+  fever_max_react_steps: 2      # reduced from 5
+  cotsc_majority_threshold_frac: 0.5
+
+training:
+  finetune_enabled: false
+  finetune_batch_size: 4        # reduced from 64
+  finetune_steps:
+    react_act_8b: 10
+    react_act_62b: 10
+    standard_cot_8b: 10
+    standard_cot_62b: 10
+  n_bootstrapped_trajectories: 8   # reduced from 3000
+  optimizer: adamw
+  learning_rate: 1.0e-5
+  weight_decay: 0.01
+  lr_schedule: linear_warmup_then_constant
+  warmup_steps: 2
+  gradient_clipping: 1.0
+  mixed_precision: bf16
+  log_every_n_steps: 1
+  save_every_n_steps: 10
+
+data:
+  hotpotqa:
+    split: validation
+    n_eval: 5          # reduced from 500
+    data_dir: data/hotpotqa
+  fever:
+    split: validation
+    n_eval: 5
+    data_dir: data/fever
+  alfworld:
+    n_eval_games: 2    # reduced from 134
+    prompt_permutations: 1
+    trajectories_per_task_type: 1
+    data_dir: data/alfworld
+  webshop:
+    n_eval_instructions: 5   # reduced from 500
+    data_dir: data/webshop
+
+evaluation:
+  metrics:
+    hotpotqa: exact_match
+    fever: accuracy
+    alfworld: success_rate
+    webshop: [score, success_rate]
+  webshop_score_normalization: matched_over_requested
+  step_counting_mode: action_observation_pairs_only
+
+paths:
+  output_dir: results/debug/
+  checkpoint_dir: checkpoints/debug/
+  log_dir: results/debug/logs/
+
+hardware:
+  device: cpu
+  precision: bf16
+  num_workers: 0

@@ -1,0 +1,28 @@
+{
+  "paper_id": "arxiv_2210_03629",
+  "comparison_date": "2026-07-27",
+  "reproducibility_score": 0.0,
+  "score_confidence": "medium",
+  "metrics_compared": 2,
+  "metrics_matched": 2,
+  "deviation_summary": {
+    "excellent": 0,
+    "good": 0,
+    "moderate": 0,
+    "significant": 0,
+    "critical": 2
+  },
+  "hallucination_count": {
+    "structural": 1,
+    "parametric": 2,
+    "omission": 2
+  },
+  "sir_version_used": 1,
+  "requires_manual_review": true,
+  "notes": [
+    "reproducibility_score computed per the standard formula (base_score - sir_confidence_penalty - unmatched_penalty) came out at or below 0.0 primarily because only 2 of 33 published paper metrics were attempted (unmatched_penalty dominates), not solely because the 2 attempted metrics scored badly.",
+    "Both attempted metrics (HotpotQA ReAct EM, HotpotQA Act EM) are Critical severity by the >30% deviation threshold.",
+    "A trajectory-level analysis (see benchmark_comparison.md, Root Cause Analysis Cause 1) found EM restricted to episodes that actually terminated via finish[...] is 30.4% -- at or above the paper's reported 27.4% -- indicating the bulk of the deviation is driven by a 54% non-termination rate within the 7-step budget, not by fundamentally incorrect reasoning.",
+    "score_confidence is 'medium' per the stated rule (1-2 metrics matched); it is not 'low' because both matched pairs are directly comparable (same metric, same dataset, same split intent) with a clear, evidenced root cause, but it is not 'high' because only 2 of 33 result rows were attempted and n=50 is a 10% subsample of the paper's full n=500 HotpotQA set."
+  ]
+}

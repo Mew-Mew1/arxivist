@@ -1,0 +1,7 @@
+{
+  "task": "hotpotqa",
+  "method": "act",
+  "metric": "exact_match",
+  "value": 0.08,
+  "n": 50
+}

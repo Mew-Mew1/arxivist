@@ -1,0 +1,107 @@
+# =============================================================================
+# ReAct (arXiv:2210.03629) reproduction config
+# =============================================================================
+# Values with a "# ASSUMED:" comment are NOT stated explicitly in the parsed
+# paper text (SIR confidence < 0.7 for that field) and were chosen following
+# the SIR's implementation_assumptions[]. Everything else is taken directly
+# from the paper (SIR confidence >= 0.7). See sir-registry/arxiv_2210_03629/
+# sir.json for the full provenance of every value below.
+
+seed: 42
+deterministic: false  # true forces torch.use_deterministic_algorithms(True); slower, only affects the optional finetuning path
+
+model:
+  llm_backend: openai        # ASSUMED: one of [openai, hf_local]. PaLM-540B (paper's model) is not
+                              # publicly accessible -- SIR implementation_assumptions[0], confidence 0.95.
+                              # NOTE: "openai" here means "any OpenAI-API-compatible endpoint", not
+                              # literally OpenAI -- which provider it hits is controlled by `provider`
+                              # below. Kept as "openai" rather than renamed, to match the openai SDK
+                              # this backend is built on and avoid an unrelated config-schema break.
+  provider: deepseek          # ASSUMED substitute for PaLM-540B. One of [deepseek, openai]. DeepSeek's
+                               # API (https://api.deepseek.com) is OpenAI-compatible, so it's used here
+                               # via the same openai SDK, no extra dependency required. Set to "openai"
+                               # to switch back to OpenAI itself (then also set model_name accordingly,
+                               # e.g. "gpt-4o-mini", and put OPENAI_API_KEY in .env).
+  model_name: deepseek-v4-flash   # DeepSeek's general chat model. Use "deepseek-reasoner" for their
+                               # reasoning-tuned model if you want to compare CoT-style behavior.
+  base_url: null              # ASSUMED: leave null to use provider's default base_url; override only
+                               # for a custom/self-hosted OpenAI-compatible endpoint.
+  api_key_env_var: null       # ASSUMED: leave null to use provider's default env var
+                               # (DEEPSEEK_API_KEY for deepseek, OPENAI_API_KEY for openai); override
+                               # only for a custom provider with a nonstandard env var name.
+  hf_model_name_or_path: null # only used when llm_backend == hf_local (e.g. a finetuned checkpoint)
+  temperature_main_prompting: 0.0   # greedy decoding, inferred from context (Section 3.2 / GPT-3 "greedy decoding")
+  temperature_cotsc: 0.7            # explicitly stated, Section 3.2
+  cotsc_n_samples: 21               # explicitly stated, Section 3.2
+  max_tokens_per_step: 256          # ASSUMED: not stated in paper, generous cap for one Thought/Action line
+  thought_mode: dense               # "dense" (HotpotQA/FEVER: alternate Thought-Action-Observation every step)
+                                     # or "sparse" (ALFWorld/WebShop: LLM decides thought frequency), Section 2
+
+action_space:
+  hotpotqa_fever: ["search", "lookup", "finish"]   # Section 3.1
+  # alfworld and webshop action spaces are environment-defined text actions;
+  # see src/react_agent/envs/alfworld_env.py and webshop_env.py
+
+routing:
+  # ReAct <-> CoT-SC backoff heuristics, Section 3.2 "Combining Internal and External Knowledge"
+  hotpotqa_max_react_steps: 7    # explicitly stated
+  fever_max_react_steps: 5       # explicitly stated
+  cotsc_majority_threshold_frac: 0.5   # "less than n/2 times" -> back off to ReAct, explicitly stated
+
+training:
+  # Appendix B.1 finetuning experiment (optional; only used by train.py)
+  finetune_enabled: false
+  finetune_batch_size: 64                # explicitly stated, Appendix B.1
+  finetune_steps:
+    react_act_8b: 4000                   # explicitly stated
+    react_act_62b: 4000                  # explicitly stated
+    standard_cot_8b: 2000                # explicitly stated
+    standard_cot_62b: 1000                # explicitly stated
+  n_bootstrapped_trajectories: 3000       # explicitly stated
+  optimizer: adamw           # ASSUMED: literature default for PaLM-class finetuning (SIR confidence 0.55)
+  learning_rate: 1.0e-5      # ASSUMED: NOT specified anywhere in the paper text (SIR confidence 0.2). Tune this.
+  weight_decay: 0.01         # ASSUMED: standard AdamW default, not stated in paper
+  lr_schedule: linear_warmup_then_constant  # ASSUMED: not stated in paper
+  warmup_steps: 100          # ASSUMED: not stated in paper
+  gradient_clipping: 1.0     # ASSUMED: not stated in paper, common practice
+  mixed_precision: bf16      # ASSUMED: not stated in paper (SIR confidence 0.2)
+  log_every_n_steps: 50
+  save_every_n_steps: 500
+
+data:
+  hotpotqa:
+    split: validation
+    n_eval: 500              # explicitly stated (Appendix A.1 GPT-3 comparison uses 500-question subset)
+    data_dir: data/hotpotqa  # never hardcoded elsewhere; always read from this config field
+  fever:
+    split: validation
+    n_eval: null              # ASSUMED: full validation-subset size not given in parsed text; null = use whole split
+    data_dir: data/fever
+  alfworld:
+    n_eval_games: 134         # explicitly stated
+    prompt_permutations: 6    # explicitly stated ("6 prompts for each task type")
+    trajectories_per_task_type: 3   # explicitly stated
+    data_dir: data/alfworld
+  webshop:
+    n_eval_instructions: 500  # explicitly stated
+    data_dir: data/webshop
+
+evaluation:
+  metrics:
+    hotpotqa: exact_match
+    fever: accuracy
+    alfworld: success_rate
+    webshop: [score, success_rate]
+  webshop_score_normalization: matched_over_requested  # ASSUMED, see SIR ambiguities[2], confidence 0.55 -- cross-check against official WebShop repo
+  step_counting_mode: action_observation_pairs_only    # see SIR implementation_assumptions[6]; alternative: "all_turns"
+
+paths:
+  output_dir: results/
+  checkpoint_dir: checkpoints/
+  log_dir: results/logs/
+
+hardware:
+  device: cpu   # the core ReAct loop is API-driven and needs no GPU; set to "cuda" only if
+                # llm_backend == hf_local or training.finetune_enabled == true
+  precision: bf16   # ASSUMED for optional local finetuning runs (SIR confidence 0.2, not stated in paper)
+  num_workers: 4

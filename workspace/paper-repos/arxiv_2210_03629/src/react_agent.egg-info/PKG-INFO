@@ -1,0 +1,18 @@
+Metadata-Version: 2.4
+Name: react_agent
+Version: 0.1.0
+Summary: Reproduction of ReAct: Synergizing Reasoning and Acting in Language Models (arXiv:2210.03629)
+Requires-Python: >=3.10
+Requires-Dist: openai>=1.30.0
+Requires-Dist: transformers>=4.41.0
+Requires-Dist: torch>=2.2.0
+Requires-Dist: accelerate>=0.30.0
+Requires-Dist: wikipedia>=1.4.0
+Requires-Dist: alfworld>=0.3.3
+Requires-Dist: pyyaml>=6.0
+Requires-Dist: tenacity>=8.2.0
+Requires-Dist: pydantic>=2.7.0
+Requires-Dist: requests>=2.31.0
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
