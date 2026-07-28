@@ -1,0 +1,348 @@
+{
+  "paper_id": "arxiv_1806_07366",
+  "sir_version": 1,
+  "provenance": {
+    "title": "Neural Ordinary Differential Equations",
+    "authors": ["Ricky T. Q. Chen", "Yulia Rubanova", "Jesse Bettencourt", "David Duvenaud"],
+    "affiliations": ["University of Toronto", "Vector Institute"],
+    "arxiv_id": "1806.07366",
+    "doi": null,
+    "submission_date": null,
+    "abstract": "We introduce a new family of deep neural network models. Instead of specifying a discrete sequence of hidden layers, we parameterize the derivative of the hidden state using a neural network. The output of the network is computed using a black-box differential equation solver. These continuous-depth models have constant memory cost, adapt their evaluation strategy to each input, and can explicitly trade numerical precision for speed.",
+    "domain": "Other",
+    "key_claims": [
+      "Hidden-layer dynamics can be parameterized as a continuous-time ODE, dh(t)/dt = f(h(t),t,theta), evaluated by a black-box ODE solver instead of a discrete stack of layers.",
+      "Gradients can be computed via the adjoint sensitivity method, giving constant O(1) memory cost with respect to depth, without backpropagating through solver internals.",
+      "Moving to continuous transformations simplifies the change-of-variables formula to a trace operation (instantaneous change of variables), enabling continuous normalizing flows (CNFs) with only linear cost in hidden units.",
+      "Continuous-depth models adaptively trade numerical precision for compute, and this tradeoff can be tuned after training.",
+      "A continuous-time latent-variable model (latent ODE) can naturally handle irregularly-sampled time series, outperforming an RNN baseline on extrapolation."
+    ],
+    "parsed_at": "2026-07-27T00:00:00Z",
+    "arxivist_version": "1.0"
+  },
+  "architecture": {
+    "primary_variant": "ODE-Net (continuous-depth residual network trained with adjoint-based backpropagation)",
+    "modules": [
+      {
+        "name": "Downsampling stem",
+        "operation_type": "convolutional downsampling block",
+        "input_shape": "[B, 1, 28, 28]",
+        "output_shape": null,
+        "parameters": {},
+        "paper_section": "Section 3, Model Architectures",
+        "confidence": 0.4,
+        "notes": "Text only states 'a small residual network which downsamples the input twice' before applying residual/ODE blocks. Exact conv kernel/stride config not given in the parsed text."
+      },
+      {
+        "name": "Residual block stack (ResNet baseline)",
+        "operation_type": "6 standard residual blocks",
+        "input_shape": null,
+        "output_shape": null,
+        "parameters": {"num_blocks": 6},
+        "paper_section": "Section 3, Model Architectures",
+        "confidence": 0.85,
+        "notes": "Explicitly stated: 6 standard residual blocks (He et al., 2016b)."
+      },
+      {
+        "name": "ODESolve module (ODE-Net variant)",
+        "operation_type": "black-box ODE solver replacing the residual block stack",
+        "input_shape": null,
+        "output_shape": null,
+        "parameters": {"solver_examples": ["implicit Adams (LSODE/VODE via scipy.integrate)"]},
+        "paper_section": "Section 3",
+        "confidence": 0.85,
+        "notes": "The 6 residual blocks are replaced by a single ODESolve call parameterized by dynamics network f."
+      },
+      {
+        "name": "Dynamics network f(z,t,theta)",
+        "operation_type": "neural network parameterizing dh/dt",
+        "input_shape": null,
+        "output_shape": null,
+        "parameters": {},
+        "paper_section": "Section 1-2",
+        "confidence": 0.6,
+        "notes": "General form given by Eq. 2; exact layer sizes for the MNIST dynamics network are not specified in the parsed text."
+      },
+      {
+        "name": "RNN encoder (recognition network)",
+        "operation_type": "recurrent network producing q(z_t0 | x)",
+        "input_shape": "[B, T, 2] (reversed sequence)",
+        "output_shape": "[B, 8] (mu and sigma over a 4-dim latent)",
+        "parameters": {"hidden_units": 25},
+        "paper_section": "Section 5.1",
+        "confidence": 0.85,
+        "notes": "Explicitly: 'recognition network is an RNN with 25 hidden units', consumes data backwards in time, outputs q(z_t0|x1...xN)."
+      },
+      {
+        "name": "Latent ODE dynamics network",
+        "operation_type": "one-hidden-layer MLP defining dz/dt = f(z, theta_f)",
+        "input_shape": "[B, 4]",
+        "output_shape": "[B, 4]",
+        "parameters": {"hidden_units": 20},
+        "paper_section": "Section 5.1",
+        "confidence": 0.95,
+        "notes": "Explicitly: 'one-hidden-layer network with 20 hidden units', 4-dimensional latent space."
+      },
+      {
+        "name": "Decoder p(x_ti | z_ti)",
+        "operation_type": "one-hidden-layer MLP",
+        "input_shape": "[B, 4]",
+        "output_shape": "[B, 2]",
+        "parameters": {"hidden_units": 20},
+        "paper_section": "Section 5.1",
+        "confidence": 0.9,
+        "notes": "Explicitly: 'another neural network with one hidden layer with 20 hidden units'."
+      },
+      {
+        "name": "Planar CNF flow dynamics",
+        "operation_type": "continuous normalizing flow layer, f(z) = u h(w^T z + b)",
+        "input_shape": null,
+        "output_shape": null,
+        "parameters": {"hidden_units_examples": [2, 8, 32, 64]},
+        "paper_section": "Section 4, Section 4.1",
+        "confidence": 0.9,
+        "notes": "Continuous analog of the planar normalizing flow, parameterized with M hidden units (M=2,8,32 in density-matching experiment, M=64 in max-likelihood experiment)."
+      }
+    ],
+    "connections": [
+      {"from": "Downsampling stem", "to": "Residual block stack (ResNet baseline)", "tensor_name": "h"},
+      {"from": "Downsampling stem", "to": "ODESolve module (ODE-Net variant)", "tensor_name": "h(0)"},
+      {"from": "Dynamics network f(z,t,theta)", "to": "ODESolve module (ODE-Net variant)", "tensor_name": "dh/dt"},
+      {"from": "RNN encoder (recognition network)", "to": "Latent ODE dynamics network", "tensor_name": "z_t0"},
+      {"from": "Latent ODE dynamics network", "to": "Decoder p(x_ti | z_ti)", "tensor_name": "z_ti"}
+    ],
+    "variants": [
+      {"name": "ResNet", "differences": {"depth_type": "discrete", "num_layers": "L (fixed)", "backprop": "standard backprop", "test_error_mnist": "0.41%", "params": "0.60M"}},
+      {"name": "RK-Net", "differences": {"depth_type": "continuous but backprop through solver ops", "backprop": "direct backprop through Runge-Kutta integrator", "test_error_mnist": "0.47%", "params": "0.22M"}},
+      {"name": "ODE-Net", "differences": {"depth_type": "continuous", "backprop": "adjoint sensitivity method", "test_error_mnist": "0.42%", "params": "0.22M", "memory": "O(1)"}}
+    ]
+  },
+  "mathematical_spec": [
+    {
+      "name": "Discrete residual update",
+      "latex": "h_{t+1} = h_t + f(h_t, \\theta_t)",
+      "role": "other",
+      "used_in": "both",
+      "hyperparameters": [],
+      "undefined_symbols": [],
+      "paper_section": "Eq. 1",
+      "confidence": 0.95
+    },
+    {
+      "name": "Neural ODE hidden-state dynamics",
+      "latex": "\\frac{d\\mathbf{h}(t)}{dt} = f(\\mathbf{h}(t), t, \\theta)",
+      "role": "other",
+      "used_in": "both",
+      "hyperparameters": ["theta"],
+      "undefined_symbols": [],
+      "paper_section": "Eq. 2",
+      "confidence": 0.98
+    },
+    {
+      "name": "Loss as ODE solve",
+      "latex": "L(\\mathbf{z}(t_1)) = L\\left(\\mathbf{z}(t_0) + \\int_{t_0}^{t_1} f(\\mathbf{z}(t), t, \\theta) dt\\right) = L(\\mathrm{ODESolve}(\\mathbf{z}(t_0), f, t_0, t_1, \\theta))",
+      "role": "objective",
+      "used_in": "training",
+      "hyperparameters": [],
+      "undefined_symbols": [],
+      "paper_section": "Eq. 3",
+      "confidence": 0.95
+    },
+    {
+      "name": "Adjoint state dynamics",
+      "latex": "\\frac{da(t)}{dt} = -a(t)^{T} \\frac{\\partial f(\\mathbf{z}(t), t, \\theta)}{\\partial \\mathbf{z}}",
+      "role": "other",
+      "used_in": "training",
+      "hyperparameters": [],
+      "undefined_symbols": [],
+      "paper_section": "Eq. 4",
+      "confidence": 0.95
+    },
+    {
+      "name": "Parameter gradient via adjoint",
+      "latex": "\\frac{dL}{d\\theta} = -\\int_{t_1}^{t_0} a(t)^{T} \\frac{\\partial f(\\mathbf{z}(t), t, \\theta)}{\\partial \\theta} dt",
+      "role": "objective",
+      "used_in": "training",
+      "hyperparameters": [],
+      "undefined_symbols": [],
+      "paper_section": "Eq. 5",
+      "confidence": 0.95
+    },
+    {
+      "name": "Instantaneous change of variables (Theorem 1)",
+      "latex": "\\frac{\\partial \\log p(\\mathbf{z}(t))}{\\partial t} = -\\operatorname{tr}\\left(\\frac{df}{d\\mathbf{z}(t)}\\right)",
+      "role": "other",
+      "used_in": "both",
+      "hyperparameters": [],
+      "undefined_symbols": [],
+      "paper_section": "Theorem 1, Eq. 8",
+      "confidence": 0.95
+    },
+    {
+      "name": "Planar CNF dynamics and log-density change",
+      "latex": "\\frac{d\\mathbf{z}(t)}{dt} = u h(w^{T}\\mathbf{z}(t)+b), \\quad \\frac{\\partial \\log p(\\mathbf{z}(t))}{\\partial t} = -u^{T}\\frac{\\partial h}{\\partial \\mathbf{z}(t)}",
+      "role": "other",
+      "used_in": "both",
+      "hyperparameters": ["u", "w", "b"],
+      "undefined_symbols": [],
+      "paper_section": "Eq. 9",
+      "confidence": 0.9
+    },
+    {
+      "name": "Multi-unit CNF (sum of dynamics, linear-cost trace)",
+      "latex": "\\frac{d\\mathbf{z}(t)}{dt} = \\sum_{n=1}^{M} f_n(\\mathbf{z}(t)), \\quad \\frac{d\\log p(\\mathbf{z}(t))}{dt} = \\sum_{n=1}^{M} \\operatorname{tr}\\left(\\frac{\\partial f_n}{\\partial \\mathbf{z}}\\right)",
+      "role": "other",
+      "used_in": "both",
+      "hyperparameters": ["M"],
+      "undefined_symbols": [],
+      "paper_section": "Eq. 10",
+      "confidence": 0.9
+    },
+    {
+      "name": "Inhomogeneous Poisson process likelihood",
+      "latex": "\\log p(t_1 \\ldots t_N \\mid t_{start}, t_{end}) = \\sum_{i=1}^{N} \\log \\lambda(\\mathbf{z}(t_i)) - \\int_{t_{start}}^{t_{end}} \\lambda(\\mathbf{z}(t)) dt",
+      "role": "loss",
+      "used_in": "training",
+      "hyperparameters": [],
+      "undefined_symbols": [],
+      "paper_section": "Section 5, Poisson Process likelihoods",
+      "confidence": 0.85
+    },
+    {
+      "name": "Latent ODE ELBO",
+      "latex": "\\mathrm{ELBO} = \\sum_{i=1}^{M} \\log p(\\mathbf{x}_{t_i} \\mid \\mathbf{z}_{t_i}, \\theta_x) + \\log p(\\mathbf{z}_{t_0}) - \\log q(\\mathbf{z}_{t_0} \\mid \\{\\mathbf{x}_{t_i}, t_i\\}_i, \\phi)",
+      "role": "objective",
+      "used_in": "training",
+      "hyperparameters": [],
+      "undefined_symbols": [],
+      "paper_section": "Appendix E, Eq. 53 context",
+      "confidence": 0.9
+    }
+  ],
+  "tensor_semantics": [
+    {"name": "h_t", "shape_notation": "[B, D]", "dtype": null, "tensor_type": "intermediate", "module": "Residual block stack (ResNet baseline)", "confidence": 0.8},
+    {"name": "z(t)", "shape_notation": "[B, D]", "dtype": null, "tensor_type": "intermediate", "module": "ODESolve module (ODE-Net variant)", "confidence": 0.85},
+    {"name": "a(t)", "shape_notation": "[B, D]", "dtype": null, "tensor_type": "intermediate", "module": "ODESolve module (ODE-Net variant)", "confidence": 0.9},
+    {"name": "theta", "shape_notation": "[num_params]", "dtype": null, "tensor_type": "parameter", "module": "Dynamics network f(z,t,theta)", "confidence": 0.7},
+    {"name": "z_t0", "shape_notation": "[B, 4]", "dtype": null, "tensor_type": "intermediate", "module": "RNN encoder (recognition network)", "confidence": 0.9},
+    {"name": "x_ti", "shape_notation": "[B, 2]", "dtype": null, "tensor_type": "input", "module": "Decoder p(x_ti | z_ti)", "confidence": 0.85},
+    {"name": "mu_z0, sigma_z0", "shape_notation": "[B, 4]", "dtype": null, "tensor_type": "intermediate", "module": "RNN encoder (recognition network)", "confidence": 0.85}
+  ],
+  "training_pipeline": {
+    "optimizer": {
+      "name": "Adam",
+      "learning_rate": null,
+      "beta1": null,
+      "beta2": null,
+      "weight_decay": null,
+      "confidence": 0.4
+    },
+    "lr_schedule": {
+      "type": null,
+      "warmup_steps": null,
+      "total_steps": null,
+      "confidence": 0.2
+    },
+    "batch_size": null,
+    "effective_batch_size": null,
+    "training_steps": 10000,
+    "epochs": null,
+    "mixed_precision": null,
+    "gradient_clipping": null,
+    "data_augmentation": ["Gaussian noise added to the bi-directional spiral time-series observations"],
+    "curriculum": null,
+    "confidence": 0.45
+  },
+  "evaluation_protocol": {
+    "datasets": [
+      {"name": "MNIST", "split": "test", "size": null, "publicly_available": true},
+      {"name": "Two Circles (toy 2D density)", "split": "n/a (density estimation)", "size": null, "publicly_available": true},
+      {"name": "Two Moons (toy 2D density)", "split": "n/a (density estimation)", "size": null, "publicly_available": true},
+      {"name": "Bi-directional spiral synthetic dataset", "split": "train/test (30/50/100 of 100 points observed)", "size": 1000, "publicly_available": false}
+    ],
+    "metrics": ["test error (classification)", "KL(q(x)||p(x)) loss (density matching)", "predictive RMSE (time-series extrapolation)", "number of function evaluations (NFE, compute proxy)"],
+    "reported_results": [
+      {"metric": "test_error", "dataset": "MNIST", "split": "test", "value": 0.0160, "is_primary": false},
+      {"metric": "test_error", "dataset": "MNIST", "split": "test", "value": 0.0041, "is_primary": true},
+      {"metric": "test_error", "dataset": "MNIST", "split": "test", "value": 0.0047, "is_primary": true},
+      {"metric": "test_error", "dataset": "MNIST", "split": "test", "value": 0.0042, "is_primary": true},
+      {"metric": "predictive_RMSE", "dataset": "Bi-directional spiral synthetic dataset", "split": "test (30/100 obs)", "value": 0.3937, "is_primary": false},
+      {"metric": "predictive_RMSE", "dataset": "Bi-directional spiral synthetic dataset", "split": "test (30/100 obs)", "value": 0.1642, "is_primary": true},
+      {"metric": "predictive_RMSE", "dataset": "Bi-directional spiral synthetic dataset", "split": "test (100/100 obs)", "value": 0.1813, "is_primary": false},
+      {"metric": "predictive_RMSE", "dataset": "Bi-directional spiral synthetic dataset", "split": "test (100/100 obs)", "value": 0.1346, "is_primary": true}
+    ],
+    "baselines": ["1-Layer MLP (LeCun et al. 1998)", "ResNet", "RK-Net", "RNN (25 hidden units)", "RNN with time-difference input concatenation", "standard (discrete) normalizing flow"],
+    "compute": "Hidden-state dynamics and derivatives evaluated on GPU via TensorFlow, called from Fortran ODE solvers (LSODE/VODE via scipy.integrate), called from Python autograd code. No GPU count or wall-clock time given.",
+    "special_conditions": ["CNF trained 10,000 iterations with Adam vs. NF trained 500,000 iterations with RMSprop", "Error tolerance reduced to 1e-3 (classification) and 1e-5 (density estimation) from a default of 1.5e-8 (sequence modeling)"],
+    "confidence": 0.75
+  },
+  "implementation_assumptions": [
+    {
+      "assumption": "MNIST classification experiments (ResNet/RK-Net/ODE-Net) use the Adam optimizer.",
+      "basis": "Common practice for this era of vision papers; the parsed text does not state an optimizer for the MNIST experiment (only for the CNF density experiments).",
+      "confidence": 0.4,
+      "alternatives": ["SGD with momentum", "RMSprop"],
+      "affects_section": "training_pipeline"
+    },
+    {
+      "assumption": "Batch size for MNIST classification is 128.",
+      "basis": "Common default in 2018-era image classification papers; not stated in the parsed text.",
+      "confidence": 0.3,
+      "alternatives": ["64", "256"],
+      "affects_section": "training_pipeline"
+    },
+    {
+      "assumption": "A faithful reimplementation should use the adaptive Dormand-Prince (dopri5) Runge-Kutta solver as the default ODE integrator.",
+      "basis": "The paper references the authors' released torchdiffeq PyTorch library (github.com/rtqichen/torchdiffeq), whose documented default solver is dopri5, even though the original paper's experiments used implicit Adams via LSODE/VODE.",
+      "confidence": 0.6,
+      "alternatives": ["implicit Adams (LSODE/VODE) as in the original experiments", "dopri8", "Euler (for illustrative comparison only)"],
+      "affects_section": "architecture"
+    },
+    {
+      "assumption": "Implementation should target PyTorch rather than the original Autograd/TensorFlow/Fortran stack.",
+      "basis": "Paper explicitly states a PyTorch implementation was released post-publication and is the de facto reference implementation used by the community.",
+      "confidence": 0.85,
+      "alternatives": ["Autograd + scipy.integrate (original experimental setup)", "JAX with diffrax"],
+      "affects_section": "implementation_assumptions"
+    },
+    {
+      "assumption": "RNN encoder/decoder cells in the latent ODE time-series model are a standard GRU.",
+      "basis": "Paper only specifies hidden unit counts (25 for encoder, 20 for dynamics/decoder MLPs), not cell type.",
+      "confidence": 0.4,
+      "alternatives": ["vanilla tanh RNN", "LSTM"],
+      "affects_section": "architecture"
+    }
+  ],
+  "ambiguities": [
+    {
+      "location": "Section 3, Model Architectures",
+      "description": "The exact configuration (kernel sizes, strides, channel counts) of the downsampling stem applied before the 6 residual/ODE blocks is not specified in the parsed text.",
+      "primary_assumption": "Two stride-2 convolutions for 4x total downsampling, consistent with common ResNet-on-MNIST designs of the period",
+      "alternatives": ["Single stride-4 convolution", "Max-pooling based downsampling"],
+      "confidence": 0.4
+    },
+    {
+      "location": "Section 3, Software",
+      "description": "Optimizer and learning rate for the MNIST classification experiments (ResNet/RK-Net/ODE-Net comparison in Table 1) are not stated in the parsed text.",
+      "primary_assumption": "Adam with a typical default learning rate (1e-3)",
+      "alternatives": ["SGD with momentum and a step-decay schedule"],
+      "confidence": 0.35
+    },
+    {
+      "location": "Section 5.1, Time-series Latent ODE Experiments",
+      "description": "The RNN cell type used for the recognition network (vanilla RNN vs. GRU vs. LSTM) is not specified.",
+      "primary_assumption": "GRU",
+      "alternatives": ["vanilla tanh RNN", "LSTM"],
+      "confidence": 0.4
+    }
+  ],
+  "confidence_annotations": {
+    "architecture": 0.65,
+    "mathematical_spec": 0.93,
+    "tensor_semantics": 0.8,
+    "training_pipeline": 0.45,
+    "evaluation_protocol": 0.75,
+    "implementation_assumptions": 0.6,
+    "overall_sir_confidence": 0.7
+  }
+}

@@ -1,0 +1,366 @@
+{
+  "paper_id": "arxiv_1806_07366",
+  "plan_version": 1,
+  "created_at": "2026-07-27T00:00:00Z",
+  "framework": {
+    "primary": "pytorch",
+    "python_version": "3.10+",
+    "cuda_required": false,
+    "cuda_min_version": "11.8",
+    "use_huggingface": false,
+    "config_library": "yaml",
+    "reasoning": "The SIR's implementation_assumptions section (confidence 0.85) notes the authors released a PyTorch reference implementation (torchdiffeq) post-publication, which is the de facto community standard for reproducing this paper, even though the original 2018 experiments used Autograd + scipy.integrate + TensorFlow + Fortran solvers. PyTorch also gives first-class custom autograd.Function support, which is exactly what the adjoint sensitivity method (Eqs. 4-5, Algorithm 1/2) needs. CUDA is optional since the original experiments (MNIST, toy densities, 2D spirals) are small enough to run on CPU; GPU is offered as an option, not a requirement. Plain YAML is sufficient given the modest number of hyperparameter groups (no need for Hydra's multirun/compose features)."
+  },
+  "module_hierarchy": [
+    {
+      "path": "src/neural_ode/core/adjoint.py",
+      "description": "Custom torch.autograd.Function implementing the adjoint sensitivity method exactly as derived in Appendix B/C: builds the augmented state [z, a, a_theta, a_t], solves it backwards through a supplied ODE solver, and returns gradients w.r.t. z(t0), theta, t0, t1.",
+      "sir_modules_mapped": ["Dynamics network f(z,t,theta)", "ODESolve module (ODE-Net variant)"],
+      "classes": [
+        {
+          "name": "OdeintAdjointMethod",
+          "base_class": "torch.autograd.Function",
+          "public_methods": [
+            {"name": "forward", "signature": "forward(ctx, z0: Tensor, func: nn.Module, t: Tensor, *params) -> Tensor", "returns": "trajectory tensor [T, B, D]"},
+            {"name": "backward", "signature": "backward(ctx, grad_output: Tensor) -> Tuple[Tensor, ...]", "returns": "gradients matching forward inputs (dL/dz0, None, dL/dt, *dL/dtheta)"}
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/neural_ode/core/ode_solvers.py",
+      "description": "Pluggable ODE solver backends: fixed-step (Euler, RK4) reimplemented from scratch for pedagogical/faithful reproduction, plus an adaptive backend that wraps the community `torchdiffeq` package (dopri5) behind the same interface.",
+      "sir_modules_mapped": ["ODESolve module (ODE-Net variant)"],
+      "classes": [
+        {
+          "name": "BaseSolver",
+          "base_class": "abc.ABC",
+          "public_methods": [
+            {"name": "integrate", "signature": "integrate(func: Callable, z0: Tensor, t: Tensor) -> Tensor", "returns": "[T, B, D] trajectory"}
+          ]
+        },
+        {"name": "EulerSolver", "base_class": "BaseSolver", "public_methods": [{"name": "integrate", "signature": "integrate(func, z0, t) -> Tensor", "returns": "[T, B, D] trajectory"}]},
+        {"name": "RK4Solver", "base_class": "BaseSolver", "public_methods": [{"name": "integrate", "signature": "integrate(func, z0, t) -> Tensor", "returns": "[T, B, D] trajectory"}]},
+        {"name": "TorchdiffeqAdaptiveSolver", "base_class": "BaseSolver", "public_methods": [{"name": "integrate", "signature": "integrate(func, z0, t, rtol=1e-5, atol=1e-5) -> Tensor", "returns": "[T, B, D] trajectory"}]}
+      ]
+    },
+    {
+      "path": "src/neural_ode/core/ode_block.py",
+      "description": "Top-level nn.Module that wraps a dynamics network + solver + adjoint mechanism into a single drop-in layer usable anywhere a discrete block would go.",
+      "sir_modules_mapped": ["ODESolve module (ODE-Net variant)", "Dynamics network f(z,t,theta)"],
+      "classes": [
+        {
+          "name": "ODEBlock",
+          "base_class": "torch.nn.Module",
+          "public_methods": [
+            {"name": "forward", "signature": "forward(z0: Tensor, integration_time: Tensor = None) -> Tensor", "returns": "z(t1) or full trajectory if multiple times requested"},
+            {"name": "nfe", "signature": "nfe() -> int", "returns": "number of function evaluations since last reset (mirrors Figure 3 NFE tracking)"}
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/neural_ode/models/dynamics_mnist.py",
+      "description": "The dynamics network f(h,t,theta) for the MNIST ODE-Net/RK-Net variants: a small conv net that outputs dh/dt of the same shape as h, following the downsample-then-(residual|ODE) architecture described in Section 3.",
+      "sir_modules_mapped": ["Downsampling stem", "Dynamics network f(z,t,theta)"],
+      "classes": [
+        {"name": "ConvDownsample", "base_class": "torch.nn.Module", "public_methods": [{"name": "forward", "signature": "forward(x: Tensor) -> Tensor", "returns": "[B, C, H/4, W/4] downsampled feature map"}]},
+        {"name": "ConvODEFunc", "base_class": "torch.nn.Module", "public_methods": [{"name": "forward", "signature": "forward(t: Tensor, h: Tensor) -> Tensor", "returns": "dh/dt, same shape as h"}]}
+      ]
+    },
+    {
+      "path": "src/neural_ode/models/odenet_mnist.py",
+      "description": "Full classification models for Table 1: ResNet (discrete baseline), RK-Net (direct backprop through integrator), and ODE-Net (adjoint method via ODEBlock). All three share ConvDownsample + a compatible dynamics/residual block so results are directly comparable.",
+      "sir_modules_mapped": ["Residual block stack (ResNet baseline)", "ODESolve module (ODE-Net variant)"],
+      "classes": [
+        {"name": "ResNetClassifier", "base_class": "torch.nn.Module", "public_methods": [{"name": "forward", "signature": "forward(x: Tensor) -> Tensor", "returns": "[B, 10] logits"}]},
+        {"name": "RKNetClassifier", "base_class": "torch.nn.Module", "public_methods": [{"name": "forward", "signature": "forward(x: Tensor) -> Tensor", "returns": "[B, 10] logits"}]},
+        {"name": "ODENetClassifier", "base_class": "torch.nn.Module", "public_methods": [{"name": "forward", "signature": "forward(x: Tensor) -> Tensor", "returns": "[B, 10] logits"}]}
+      ]
+    },
+    {
+      "path": "src/neural_ode/models/cnf.py",
+      "description": "Continuous Normalizing Flow model implementing Theorem 1 (instantaneous change of variables) and the planar-flow special case (Eq. 9) plus the linear-cost multi-unit extension (Eq. 10).",
+      "sir_modules_mapped": ["Planar CNF flow dynamics"],
+      "classes": [
+        {
+          "name": "PlanarCNFDynamics",
+          "base_class": "torch.nn.Module",
+          "public_methods": [
+            {"name": "forward", "signature": "forward(t: Tensor, states: Tuple[Tensor, Tensor]) -> Tuple[Tensor, Tensor]", "returns": "(dz/dt [B,D], d(logp)/dt [B,1]) — augmented dynamics for the ODEBlock"}
+          ]
+        },
+        {
+          "name": "ContinuousNormalizingFlow",
+          "base_class": "torch.nn.Module",
+          "public_methods": [
+            {"name": "forward", "signature": "forward(z0: Tensor, logp_z0: Tensor, reverse: bool = False) -> Tuple[Tensor, Tensor]", "returns": "(z1 [B,D], logp_z1 [B,1])"},
+            {"name": "sample", "signature": "sample(num_samples: int) -> Tensor", "returns": "[num_samples, D] samples drawn by reversing the flow from the base distribution"}
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/neural_ode/models/latent_ode.py",
+      "description": "Continuous-time latent-variable time-series model (Section 5): RNN recognition network -> q(z_t0) -> ODEBlock producing z_t1..z_tM -> per-timestep decoder, trained as a VAE (Appendix E algorithm).",
+      "sir_modules_mapped": ["RNN encoder (recognition network)", "Latent ODE dynamics network", "Decoder p(x_ti | z_ti)"],
+      "classes": [
+        {"name": "RecognitionRNN", "base_class": "torch.nn.Module", "public_methods": [{"name": "forward", "signature": "forward(x: Tensor, t: Tensor) -> Tuple[Tensor, Tensor]", "returns": "(mu_z0 [B,4], logvar_z0 [B,4])"}]},
+        {"name": "LatentODEFunc", "base_class": "torch.nn.Module", "public_methods": [{"name": "forward", "signature": "forward(t: Tensor, z: Tensor) -> Tensor", "returns": "dz/dt [B,4]"}]},
+        {"name": "Decoder", "base_class": "torch.nn.Module", "public_methods": [{"name": "forward", "signature": "forward(z: Tensor) -> Tensor", "returns": "[B,2] reconstructed observation"}]},
+        {"name": "LatentODEModel", "base_class": "torch.nn.Module", "public_methods": [{"name": "forward", "signature": "forward(x: Tensor, t: Tensor) -> Tuple[Tensor, Tensor, Tensor]", "returns": "(x_hat [B,T,2], mu_z0 [B,4], logvar_z0 [B,4])"}]}
+      ]
+    },
+    {
+      "path": "src/neural_ode/data/mnist_dataset.py",
+      "description": "Thin wrapper around torchvision.datasets.MNIST with the standard normalize transform.",
+      "sir_modules_mapped": [],
+      "classes": [{"name": "MNISTDataModule", "base_class": "object", "public_methods": [{"name": "train_loader", "signature": "train_loader(batch_size: int) -> DataLoader", "returns": "DataLoader"}, {"name": "test_loader", "signature": "test_loader(batch_size: int) -> DataLoader", "returns": "DataLoader"}]}]
+    },
+    {
+      "path": "src/neural_ode/data/toy_density_dataset.py",
+      "description": "Samplers/log-density functions for the 'Two Circles' and 'Two Moons' target distributions used in the CNF density-matching and maximum-likelihood experiments (Figures 4-5).",
+      "sir_modules_mapped": [],
+      "classes": [{"name": "TwoCirclesDensity", "base_class": "object", "public_methods": [{"name": "log_prob", "signature": "log_prob(z: Tensor) -> Tensor", "returns": "[B] log density"}, {"name": "sample", "signature": "sample(n: int) -> Tensor", "returns": "[n, 2] samples"}]}, {"name": "TwoMoonsDensity", "base_class": "object", "public_methods": [{"name": "log_prob", "signature": "log_prob(z: Tensor) -> Tensor", "returns": "[B] log density"}, {"name": "sample", "signature": "sample(n: int) -> Tensor", "returns": "[n, 2] samples"}]}]
+    },
+    {
+      "path": "src/neural_ode/data/spiral_dataset.py",
+      "description": "Generates the synthetic bi-directional 2D spiral dataset (1000 trajectories, 100 timesteps, half clockwise/half counter-clockwise, Gaussian observation noise) and provides irregular sub-sampling (n=30/50/100) for the extrapolation experiment.",
+      "sir_modules_mapped": [],
+      "classes": [{"name": "SpiralDataset", "base_class": "torch.utils.data.Dataset", "public_methods": [{"name": "__getitem__", "signature": "__getitem__(idx: int) -> Tuple[Tensor, Tensor]", "returns": "(x [100,2], t [100])"}, {"name": "subsample", "signature": "subsample(n_obs: int) -> 'SpiralDataset'", "returns": "SpiralDataset with n_obs randomly retained points per trajectory"}]}]
+    },
+    {
+      "path": "src/neural_ode/training/trainer_classification.py",
+      "description": "Training loop shared by ResNet/RK-Net/ODE-Net on MNIST; logs test error, param count, and NFE per epoch (reproducing Table 1 and Figure 3).",
+      "sir_modules_mapped": [],
+      "classes": [{"name": "ClassificationTrainer", "base_class": "object", "public_methods": [{"name": "fit", "signature": "fit(epochs: int) -> dict", "returns": "history dict with per-epoch loss/test_error/nfe"}]}]
+    },
+    {
+      "path": "src/neural_ode/training/trainer_cnf.py",
+      "description": "Two training modes: density-matching (minimize KL(q||p), Adam, 10k iters) and maximum-likelihood (train q on data, reverse for sampling), reproducing Section 4.1.",
+      "sir_modules_mapped": [],
+      "classes": [{"name": "CNFTrainer", "base_class": "object", "public_methods": [{"name": "fit_density_matching", "signature": "fit_density_matching(iterations: int = 10000) -> dict", "returns": "history dict"}, {"name": "fit_maximum_likelihood", "signature": "fit_maximum_likelihood(iterations: int) -> dict", "returns": "history dict"}]}]
+    },
+    {
+      "path": "src/neural_ode/training/trainer_latent_ode.py",
+      "description": "VAE training loop for the latent ODE model following Appendix E: encode -> sample z_t0 -> ODESolve -> decode -> maximize ELBO.",
+      "sir_modules_mapped": [],
+      "classes": [{"name": "LatentODETrainer", "base_class": "object", "public_methods": [{"name": "fit", "signature": "fit(epochs: int) -> dict", "returns": "history dict with per-epoch ELBO/RMSE"}]}]
+    },
+    {
+      "path": "src/neural_ode/training/losses.py",
+      "description": "Loss functions: cross-entropy (classification), KL(q||p) (density matching), negative ELBO (latent ODE, Appendix E Eq. context), Poisson process log-likelihood (Section 5, optional extension).",
+      "sir_modules_mapped": [],
+      "classes": []
+    },
+    {
+      "path": "src/neural_ode/evaluation/metrics.py",
+      "description": "Test error, predictive RMSE (Table 2), and NFE-vs-error tracking (Figure 3) used across the three experiment families.",
+      "sir_modules_mapped": [],
+      "classes": [{"name": "MetricTracker", "base_class": "object", "public_methods": [{"name": "update", "signature": "update(**kwargs) -> None", "returns": "None"}, {"name": "summary", "signature": "summary() -> dict", "returns": "aggregated metrics dict"}]}]
+    },
+    {
+      "path": "src/neural_ode/utils/config.py",
+      "description": "YAML config loader/validator with dataclass-backed schema mirroring config_schema below.",
+      "sir_modules_mapped": [],
+      "classes": [{"name": "Config", "base_class": "object", "public_methods": [{"name": "from_yaml", "signature": "from_yaml(path: str) -> 'Config'", "returns": "Config instance"}]}]
+    },
+    {
+      "path": "src/neural_ode/utils/nfe_counter.py",
+      "description": "Forward-hook based counter that increments each time a dynamics network is evaluated, used to reproduce the NFE statistics in Figure 3.",
+      "sir_modules_mapped": [],
+      "classes": [{"name": "NFECounter", "base_class": "object", "public_methods": [{"name": "attach", "signature": "attach(module: torch.nn.Module) -> None", "returns": "None"}, {"name": "count", "signature": "count() -> int", "returns": "int"}]}]
+    }
+  ],
+  "tensor_flows": [
+    {
+      "name": "ODE-Net MNIST classification forward pass",
+      "input": {"name": "x", "shape": "[B, 1, 28, 28]", "dtype": "float32"},
+      "output": {"name": "logits", "shape": "[B, 10]", "dtype": "float32"},
+      "steps": [
+        "h0 = ConvDownsample(x)                          -> [B, C, 6, 6]  (TODO: verify exact spatial size from paper; ambiguity flagged in SIR)",
+        "h1 = ODEBlock(ConvODEFunc)(h0, t=[0,1])          -> [B, C, 6, 6]  (adjoint method computes gradients w.r.t. h0 and dynamics params without storing forward activations)",
+        "pooled = GlobalAvgPool(h1)                       -> [B, C]",
+        "logits = Linear(pooled)                           -> [B, 10]"
+      ]
+    },
+    {
+      "name": "Continuous Normalizing Flow forward (density -> sample or sample -> density)",
+      "input": {"name": "z0, logp_z0", "shape": "[B, 2], [B, 1]", "dtype": "float32"},
+      "output": {"name": "z1, logp_z1", "shape": "[B, 2], [B, 1]", "dtype": "float32"},
+      "steps": [
+        "augmented_state0 = concat(z0, logp_z0)                              -> [B, 3]",
+        "augmented_state1 = ODEBlock(PlanarCNFDynamics)(augmented_state0, t=[0,1]) -> [B, 3]  (dynamics returns both dz/dt and d(logp)/dt per Eq. 8-9)",
+        "z1, delta_logp = split(augmented_state1)                            -> [B, 2], [B, 1]",
+        "logp_z1 = logp_z0 - delta_logp                                       -> [B, 1]  (sign per Eq. 6/8 change-of-variables convention)"
+      ]
+    },
+    {
+      "name": "Latent ODE reconstruction + extrapolation",
+      "input": {"name": "x_obs, t_obs, t_query", "shape": "[B, N, 2], [N], [M]", "dtype": "float32"},
+      "output": {"name": "x_hat", "shape": "[B, M, 2]", "dtype": "float32"},
+      "steps": [
+        "mu_z0, logvar_z0 = RecognitionRNN(reverse(x_obs), reverse(t_obs))   -> [B,4], [B,4]",
+        "z_t0 = reparameterize(mu_z0, logvar_z0)                              -> [B, 4]",
+        "z_traj = ODEBlock(LatentODEFunc)(z_t0, t=t_query)                    -> [M, B, 4]  (t_query spans both observed and extrapolated times, per Figure 6)",
+        "x_hat = Decoder(z_traj)                                              -> [M, B, 2] -> transpose -> [B, M, 2]"
+      ]
+    }
+  ],
+  "config_schema": {
+    "model": {
+      "variant": "odenet",
+      "hidden_channels": 64,
+      "downsample_output_spatial_size": "6  # ASSUMED: exact spatial size after downsampling stem not specified in parsed text (SIR ambiguity, confidence 0.4)",
+      "latent_dim": 4,
+      "encoder_hidden_units": 25,
+      "dynamics_hidden_units": 20,
+      "decoder_hidden_units": 20,
+      "rnn_cell_type": "GRU  # ASSUMED: cell type not specified in paper text (SIR confidence 0.4)",
+      "cnf_hidden_units": 64,
+      "ode_solver": "dopri5  # ASSUMED: paper's own experiments used implicit Adams via LSODE/VODE; dopri5 chosen as the torchdiffeq default (SIR confidence 0.6)",
+      "rtol_classification": 1e-3,
+      "atol_classification": 1e-3,
+      "rtol_density": 1e-5,
+      "atol_density": 1e-5,
+      "rtol_sequence": 1.5e-8,
+      "atol_sequence": 1.5e-8
+    },
+    "training": {
+      "optimizer": "adam  # ASSUMED for classification experiments; explicitly Adam for CNF density-matching (SIR confidence 0.4 for classification, 0.95 for CNF)",
+      "learning_rate": 0.001,
+      "batch_size": "128  # ASSUMED: not specified in parsed text (SIR confidence 0.3)",
+      "cnf_density_matching_iterations": 10000,
+      "nf_baseline_iterations": 500000,
+      "gradient_clipping": null,
+      "mixed_precision": false
+    },
+    "data": {
+      "mnist_path": "./data/mnist",
+      "spiral_num_trajectories": 1000,
+      "spiral_timesteps": 100,
+      "spiral_observation_noise_std": "0.1  # ASSUMED: paper states Gaussian noise is added but does not give the std (not explicitly extracted in SIR; treat as tunable)",
+      "spiral_subsample_sizes": [30, 50, 100]
+    },
+    "evaluation": {
+      "metrics": ["test_error", "kl_divergence", "predictive_rmse", "nfe"],
+      "mnist_test_split": "standard"
+    },
+    "hardware": {
+      "device": "cuda_if_available",
+      "num_workers": 4,
+      "precision": "float32"
+    }
+  },
+  "dependencies": {
+    "runtime": [
+      {"package": "torch", "version": ">=2.1,<2.4", "reason": "Core tensor ops, autograd.Function for the custom adjoint method, nn.Module for all models"},
+      {"package": "torchvision", "version": ">=0.16", "reason": "MNIST dataset loading and transforms"},
+      {"package": "torchdiffeq", "version": ">=0.2.3", "reason": "Adaptive dopri5 solver backend option, matching the community-standard reference implementation referenced in the paper (github.com/rtqichen/torchdiffeq)"},
+      {"package": "numpy", "version": ">=1.24", "reason": "Spiral/toy-density dataset generation, general numerics"},
+      {"package": "scipy", "version": ">=1.11", "reason": "Reference-only comparison against the original implicit Adams (LSODE/VODE) solver behavior, and for the Two Moons/Two Circles density definitions"},
+      {"package": "matplotlib", "version": ">=3.7", "reason": "Reproducing Figures 3-9 (NFE plots, CNF density visualizations, spiral trajectory plots)"},
+      {"package": "pyyaml", "version": ">=6.0", "reason": "Config file loading"},
+      {"package": "tqdm", "version": ">=4.66", "reason": "Training progress bars"}
+    ],
+    "dev": [
+      {"package": "pytest", "version": ">=7.4"},
+      {"package": "pytest-cov", "version": ">=4.1"},
+      {"package": "black", "version": ">=23.0"},
+      {"package": "ruff", "version": ">=0.1"},
+      {"package": "mypy", "version": ">=1.5"}
+    ]
+  },
+  "entrypoints": [
+    {
+      "filename": "train_classification.py",
+      "purpose": "Train and evaluate ResNet / RK-Net / ODE-Net on MNIST, reproducing Table 1 and Figure 3.",
+      "cli_args": [
+        {"flag": "--variant", "type": "str", "required": true, "default": "odenet", "help": "One of: resnet, rknet, odenet"},
+        {"flag": "--config", "type": "str", "required": false, "default": "configs/classification.yaml", "help": "Path to config YAML"},
+        {"flag": "--epochs", "type": "int", "required": false, "default": 50, "help": "Number of training epochs"},
+        {"flag": "--seed", "type": "int", "required": false, "default": 0, "help": "Random seed"}
+      ]
+    },
+    {
+      "filename": "train_cnf.py",
+      "purpose": "Train a Continuous Normalizing Flow on a toy 2D density (Two Circles / Two Moons) via density-matching or maximum likelihood, reproducing Figures 4-5.",
+      "cli_args": [
+        {"flag": "--target", "type": "str", "required": true, "default": "two_circles", "help": "One of: two_circles, two_moons"},
+        {"flag": "--mode", "type": "str", "required": true, "default": "density_matching", "help": "One of: density_matching, maximum_likelihood"},
+        {"flag": "--hidden-units", "type": "int", "required": false, "default": 64, "help": "Number of CNF hidden units (M)"},
+        {"flag": "--config", "type": "str", "required": false, "default": "configs/cnf.yaml", "help": "Path to config YAML"}
+      ]
+    },
+    {
+      "filename": "train_latent_ode.py",
+      "purpose": "Train the latent ODE time-series model on the synthetic spiral dataset and evaluate extrapolation RMSE, reproducing Table 2 and Figures 8-10.",
+      "cli_args": [
+        {"flag": "--num-observations", "type": "int", "required": false, "default": 100, "help": "Number of sub-sampled observation points per trajectory (30/50/100)"},
+        {"flag": "--config", "type": "str", "required": false, "default": "configs/latent_ode.yaml", "help": "Path to config YAML"},
+        {"flag": "--epochs", "type": "int", "required": false, "default": 500, "help": "Number of training epochs"}
+      ]
+    },
+    {
+      "filename": "evaluate.py",
+      "purpose": "Load a trained checkpoint (any of the three experiment families) and reproduce the relevant paper table/figure.",
+      "cli_args": [
+        {"flag": "--checkpoint", "type": "str", "required": true, "default": null, "help": "Path to a saved model checkpoint"},
+        {"flag": "--experiment", "type": "str", "required": true, "default": null, "help": "One of: classification, cnf, latent_ode"}
+      ]
+    },
+    {
+      "filename": "inference.py",
+      "purpose": "Single-sample inference: classify one MNIST image, sample from a trained CNF, or extrapolate one spiral trajectory.",
+      "cli_args": [
+        {"flag": "--checkpoint", "type": "str", "required": true, "default": null, "help": "Path to a saved model checkpoint"},
+        {"flag": "--experiment", "type": "str", "required": true, "default": null, "help": "One of: classification, cnf, latent_ode"},
+        {"flag": "--input", "type": "str", "required": false, "default": null, "help": "Path to a single input sample (image/csv), if applicable"}
+      ]
+    }
+  ],
+  "docker_spec": {
+    "base_image": "pytorch/pytorch:2.2.0-cuda11.8-cudnn8-runtime",
+    "system_deps": ["git", "build-essential"],
+    "workdir": "/workspace",
+    "default_cmd": "python train_classification.py --variant odenet --config configs/classification.yaml"
+  },
+  "risk_assessment": [
+    {
+      "severity": "High",
+      "description": "MNIST classification hyperparameters (optimizer, learning rate, batch size, number of epochs) are not stated in the parsed paper text; Table 1 results (0.42% test error for ODE-Net) may not be exactly reproducible without the true settings.",
+      "source": "SIR training_pipeline confidence 0.45; implementation_assumptions #1, #2",
+      "mitigation": "Expose optimizer/LR/batch-size as config flags with the assumed defaults (Adam, 1e-3, 128) clearly marked ASSUMED in config.yaml; document in README that these are literature-standard guesses, and suggest a small grid search to match the reported 0.42% test error."
+    },
+    {
+      "severity": "Medium",
+      "description": "The exact downsampling stem architecture (conv kernel/stride sizes) before the residual/ODE blocks is unspecified.",
+      "source": "SIR ambiguities[0]; architecture confidence 0.65",
+      "mitigation": "Implement ConvDownsample as a swappable module (config-driven kernel/stride list) defaulting to two stride-2 3x3 convs; add a unit test asserting the output spatial size matches whatever is configured, so alternate downsampling schemes can be tried without touching model code."
+    },
+    {
+      "severity": "Medium",
+      "description": "Custom implementation of the adjoint sensitivity method (Appendix B/C) is mathematically intricate (augmented state, vector-Jacobian products, sign conventions for backward-time integration) and easy to get subtly wrong, which would silently corrupt gradients.",
+      "source": "SIR mathematical_spec entries for Eqs. 4-5 and Appendix B/C (confidence 0.95, but implementation is non-trivial)",
+      "mitigation": "Provide `TorchdiffeqAdaptiveSolver` (backed by the well-tested community `torchdiffeq` package) as the default/recommended backend, and keep the from-scratch `OdeintAdjointMethod` as an educational, well-unit-tested alternative validated via `torch.autograd.gradcheck` against direct backprop through a fixed-step solver on small examples."
+    },
+    {
+      "severity": "Low",
+      "description": "RNN cell type (vanilla/GRU/LSTM) for the latent ODE recognition network is unspecified.",
+      "source": "SIR ambiguities[2]; architecture confidence 0.65",
+      "mitigation": "Make `RecognitionRNN` accept a `cell_type` config flag (default GRU) so the choice is trivially swappable and testable against Table 2 RMSE numbers."
+    },
+    {
+      "severity": "Low",
+      "description": "Gaussian observation noise standard deviation for the synthetic spiral dataset is not given a numeric value in the parsed text.",
+      "source": "SIR training_pipeline.data_augmentation entry (qualitative only)",
+      "mitigation": "Expose `spiral_observation_noise_std` as a config value (default 0.1) and treat it as a tunable reproduction parameter; document the assumption in the README and config comments."
+    },
+    {
+      "severity": "Low",
+      "description": "The synthetic spiral dataset is not publicly released, so exact reproduction of Table 2 numbers depends on regenerating data with matching statistical properties rather than loading an original file.",
+      "source": "SIR evaluation_protocol.datasets (spiral dataset, publicly_available: false)",
+      "mitigation": "Implement `SpiralDataset` as a seeded generator (numpy RandomState) so results are at least internally reproducible run-to-run, and document that absolute RMSE values may differ slightly from the paper's Table 2 due to different random spiral instantiations."
+    }
+  ]
+}
