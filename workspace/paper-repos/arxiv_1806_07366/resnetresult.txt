@@ -1,0 +1,521 @@
+(DL) C:\Users\ACER\Downloads\arxiv_1806_07366>
+(DL) C:\Users\ACER\Downloads\arxiv_1806_07366>python train_classification.py --variant resnet
+[ClassificationTrainer] model=ResNetClassifier(blocks=6) params=577,674 train_size=60,000 steps/epoch=468
+epoch=0 step=50 loss=2.0596
+epoch=0 step=100 loss=1.4931
+epoch=0 step=150 loss=0.7589
+epoch=0 step=200 loss=0.4240
+epoch=0 step=250 loss=0.2022
+epoch=0 step=300 loss=0.2758
+epoch=0 step=350 loss=0.1476
+epoch=0 step=400 loss=0.1811
+epoch=0 step=450 loss=0.1757
+[epoch 0] loss=0.7279 test_error=2.8200% nfe=0 time=17.7s
+epoch=1 step=500 loss=0.2193
+epoch=1 step=550 loss=0.1321
+epoch=1 step=600 loss=0.0720
+epoch=1 step=650 loss=0.2503
+epoch=1 step=700 loss=0.1117
+epoch=1 step=750 loss=0.1416
+epoch=1 step=800 loss=0.0141
+epoch=1 step=850 loss=0.0528
+epoch=1 step=900 loss=0.0958
+[epoch 1] loss=0.0991 test_error=2.3600% nfe=0 time=17.8s
+epoch=2 step=950 loss=0.0268
+epoch=2 step=1000 loss=0.0750
+epoch=2 step=1050 loss=0.0538
+epoch=2 step=1100 loss=0.0749
+epoch=2 step=1150 loss=0.0298
+epoch=2 step=1200 loss=0.0079
+epoch=2 step=1250 loss=0.1065
+epoch=2 step=1300 loss=0.0923
+epoch=2 step=1350 loss=0.0255
+epoch=2 step=1400 loss=0.0136
+[epoch 2] loss=0.0671 test_error=1.2200% nfe=0 time=17.9s
+epoch=3 step=1450 loss=0.0741
+epoch=3 step=1500 loss=0.1328
+epoch=3 step=1550 loss=0.0103
+epoch=3 step=1600 loss=0.0263
+epoch=3 step=1650 loss=0.0400
+epoch=3 step=1700 loss=0.0153
+epoch=3 step=1750 loss=0.1136
+epoch=3 step=1800 loss=0.0080
+epoch=3 step=1850 loss=0.0579
+[epoch 3] loss=0.0529 test_error=1.2300% nfe=0 time=19.4s
+epoch=4 step=1900 loss=0.0152
+epoch=4 step=1950 loss=0.0511
+epoch=4 step=2000 loss=0.0262
+epoch=4 step=2050 loss=0.0058
+epoch=4 step=2100 loss=0.0114
+epoch=4 step=2150 loss=0.0226
+epoch=4 step=2200 loss=0.0041
+epoch=4 step=2250 loss=0.0170
+epoch=4 step=2300 loss=0.1213
+[epoch 4] loss=0.0425 test_error=1.0300% nfe=0 time=19.3s
+epoch=5 step=2350 loss=0.0146
+epoch=5 step=2400 loss=0.0042
+epoch=5 step=2450 loss=0.0148
+epoch=5 step=2500 loss=0.0077
+epoch=5 step=2550 loss=0.0564
+epoch=5 step=2600 loss=0.0240
+epoch=5 step=2650 loss=0.0029
+epoch=5 step=2700 loss=0.0441
+epoch=5 step=2750 loss=0.0900
+epoch=5 step=2800 loss=0.0182
+[epoch 5] loss=0.0351 test_error=0.7700% nfe=0 time=18.4s
+epoch=6 step=2850 loss=0.0180
+epoch=6 step=2900 loss=0.0046
+epoch=6 step=2950 loss=0.0440
+epoch=6 step=3000 loss=0.0423
+epoch=6 step=3050 loss=0.0187
+epoch=6 step=3100 loss=0.0149
+epoch=6 step=3150 loss=0.1118
+epoch=6 step=3200 loss=0.0109
+epoch=6 step=3250 loss=0.0140
+[epoch 6] loss=0.0329 test_error=0.7200% nfe=0 time=19.9s
+epoch=7 step=3300 loss=0.0030
+epoch=7 step=3350 loss=0.0056
+epoch=7 step=3400 loss=0.0285
+epoch=7 step=3450 loss=0.0236
+epoch=7 step=3500 loss=0.0066
+epoch=7 step=3550 loss=0.0075
+epoch=7 step=3600 loss=0.0147
+epoch=7 step=3650 loss=0.0038
+epoch=7 step=3700 loss=0.0340
+[epoch 7] loss=0.0255 test_error=0.7600% nfe=0 time=19.8s
+epoch=8 step=3750 loss=0.0170
+epoch=8 step=3800 loss=0.0553
+epoch=8 step=3850 loss=0.0181
+epoch=8 step=3900 loss=0.0175
+epoch=8 step=3950 loss=0.0052
+epoch=8 step=4000 loss=0.0088
+epoch=8 step=4050 loss=0.0011
+epoch=8 step=4100 loss=0.0244
+epoch=8 step=4150 loss=0.0110
+epoch=8 step=4200 loss=0.0305
+[epoch 8] loss=0.0241 test_error=1.0900% nfe=0 time=19.8s
+epoch=9 step=4250 loss=0.0211
+epoch=9 step=4300 loss=0.0024
+epoch=9 step=4350 loss=0.0178
+epoch=9 step=4400 loss=0.0226
+epoch=9 step=4450 loss=0.0185
+epoch=9 step=4500 loss=0.0141
+epoch=9 step=4550 loss=0.0087
+epoch=9 step=4600 loss=0.0186
+epoch=9 step=4650 loss=0.0036
+[epoch 9] loss=0.0226 test_error=0.7000% nfe=0 time=20.0s
+epoch=10 step=4700 loss=0.0120
+epoch=10 step=4750 loss=0.0069
+epoch=10 step=4800 loss=0.0438
+epoch=10 step=4850 loss=0.0037
+epoch=10 step=4900 loss=0.0430
+epoch=10 step=4950 loss=0.0217
+epoch=10 step=5000 loss=0.0219
+epoch=10 step=5050 loss=0.0172
+epoch=10 step=5100 loss=0.0011
+[epoch 10] loss=0.0210 test_error=0.8200% nfe=0 time=19.4s
+epoch=11 step=5150 loss=0.0041
+epoch=11 step=5200 loss=0.0058
+epoch=11 step=5250 loss=0.0010
+epoch=11 step=5300 loss=0.0336
+epoch=11 step=5350 loss=0.0032
+epoch=11 step=5400 loss=0.0097
+epoch=11 step=5450 loss=0.0087
+epoch=11 step=5500 loss=0.0229
+epoch=11 step=5550 loss=0.1018
+epoch=11 step=5600 loss=0.0036
+[epoch 11] loss=0.0175 test_error=0.8000% nfe=0 time=20.1s
+epoch=12 step=5650 loss=0.0057
+epoch=12 step=5700 loss=0.0143
+epoch=12 step=5750 loss=0.0074
+epoch=12 step=5800 loss=0.0785
+epoch=12 step=5850 loss=0.0027
+epoch=12 step=5900 loss=0.0423
+epoch=12 step=5950 loss=0.0056
+epoch=12 step=6000 loss=0.0695
+epoch=12 step=6050 loss=0.0799
+[epoch 12] loss=0.0182 test_error=0.6200% nfe=0 time=21.2s
+epoch=13 step=6100 loss=0.0277
+epoch=13 step=6150 loss=0.0017
+epoch=13 step=6200 loss=0.0228
+epoch=13 step=6250 loss=0.0039
+epoch=13 step=6300 loss=0.0122
+epoch=13 step=6350 loss=0.0379
+epoch=13 step=6400 loss=0.0416
+epoch=13 step=6450 loss=0.0006
+epoch=13 step=6500 loss=0.0013
+epoch=13 step=6550 loss=0.0013
+[epoch 13] loss=0.0148 test_error=0.9100% nfe=0 time=21.3s
+epoch=14 step=6600 loss=0.0130
+epoch=14 step=6650 loss=0.0030
+epoch=14 step=6700 loss=0.0136
+epoch=14 step=6750 loss=0.0018
+epoch=14 step=6800 loss=0.0005
+epoch=14 step=6850 loss=0.0124
+epoch=14 step=6900 loss=0.0327
+epoch=14 step=6950 loss=0.0028
+epoch=14 step=7000 loss=0.0136
+[epoch 14] loss=0.0147 test_error=0.6600% nfe=0 time=20.5s
+epoch=15 step=7050 loss=0.0099
+epoch=15 step=7100 loss=0.0010
+epoch=15 step=7150 loss=0.0024
+epoch=15 step=7200 loss=0.0024
+epoch=15 step=7250 loss=0.0019
+epoch=15 step=7300 loss=0.0137
+epoch=15 step=7350 loss=0.0566
+epoch=15 step=7400 loss=0.0227
+epoch=15 step=7450 loss=0.0218
+[epoch 15] loss=0.0138 test_error=0.8500% nfe=0 time=21.0s
+epoch=16 step=7500 loss=0.0031
+epoch=16 step=7550 loss=0.0113
+epoch=16 step=7600 loss=0.0538
+epoch=16 step=7650 loss=0.0076
+epoch=16 step=7700 loss=0.0006
+epoch=16 step=7750 loss=0.0008
+epoch=16 step=7800 loss=0.0003
+epoch=16 step=7850 loss=0.0017
+epoch=16 step=7900 loss=0.0096
+epoch=16 step=7950 loss=0.0017
+[epoch 16] loss=0.0109 test_error=0.7800% nfe=0 time=19.8s
+epoch=17 step=8000 loss=0.0152
+epoch=17 step=8050 loss=0.0364
+epoch=17 step=8100 loss=0.0020
+epoch=17 step=8150 loss=0.0009
+epoch=17 step=8200 loss=0.0070
+epoch=17 step=8250 loss=0.0270
+epoch=17 step=8300 loss=0.0006
+epoch=17 step=8350 loss=0.0350
+epoch=17 step=8400 loss=0.0018
+[epoch 17] loss=0.0114 test_error=0.8000% nfe=0 time=20.0s
+epoch=18 step=8450 loss=0.0003
+epoch=18 step=8500 loss=0.0095
+epoch=18 step=8550 loss=0.0020
+epoch=18 step=8600 loss=0.0245
+epoch=18 step=8650 loss=0.0140
+epoch=18 step=8700 loss=0.0013
+epoch=18 step=8750 loss=0.0170
+epoch=18 step=8800 loss=0.0007
+epoch=18 step=8850 loss=0.0067
+[epoch 18] loss=0.0105 test_error=0.8900% nfe=0 time=20.0s
+epoch=19 step=8900 loss=0.0017
+epoch=19 step=8950 loss=0.0009
+epoch=19 step=9000 loss=0.0018
+epoch=19 step=9050 loss=0.0279
+epoch=19 step=9100 loss=0.0006
+epoch=19 step=9150 loss=0.0009
+epoch=19 step=9200 loss=0.0008
+epoch=19 step=9250 loss=0.0015
+epoch=19 step=9300 loss=0.0072
+epoch=19 step=9350 loss=0.0013
+[epoch 19] loss=0.0107 test_error=0.7500% nfe=0 time=20.5s
+epoch=20 step=9400 loss=0.0016
+epoch=20 step=9450 loss=0.0005
+epoch=20 step=9500 loss=0.0013
+epoch=20 step=9550 loss=0.0006
+epoch=20 step=9600 loss=0.0007
+epoch=20 step=9650 loss=0.0413
+epoch=20 step=9700 loss=0.0040
+epoch=20 step=9750 loss=0.0004
+epoch=20 step=9800 loss=0.0641
+[epoch 20] loss=0.0082 test_error=0.8300% nfe=0 time=20.2s
+epoch=21 step=9850 loss=0.0070
+epoch=21 step=9900 loss=0.0091
+epoch=21 step=9950 loss=0.0007
+epoch=21 step=10000 loss=0.0042
+epoch=21 step=10050 loss=0.0030
+epoch=21 step=10100 loss=0.0019
+epoch=21 step=10150 loss=0.0021
+epoch=21 step=10200 loss=0.0004
+epoch=21 step=10250 loss=0.0010
+[epoch 21] loss=0.0094 test_error=1.2400% nfe=0 time=20.0s
+epoch=22 step=10300 loss=0.0022
+epoch=22 step=10350 loss=0.0099
+epoch=22 step=10400 loss=0.0008
+epoch=22 step=10450 loss=0.0009
+epoch=22 step=10500 loss=0.0475
+epoch=22 step=10550 loss=0.0016
+epoch=22 step=10600 loss=0.0006
+epoch=22 step=10650 loss=0.0226
+epoch=22 step=10700 loss=0.0008
+epoch=22 step=10750 loss=0.0023
+[epoch 22] loss=0.0074 test_error=1.0800% nfe=0 time=20.4s
+epoch=23 step=10800 loss=0.0113
+epoch=23 step=10850 loss=0.0008
+epoch=23 step=10900 loss=0.0002
+epoch=23 step=10950 loss=0.0003
+epoch=23 step=11000 loss=0.0480
+epoch=23 step=11050 loss=0.0005
+epoch=23 step=11100 loss=0.0216
+epoch=23 step=11150 loss=0.0257
+epoch=23 step=11200 loss=0.0090
+[epoch 23] loss=0.0093 test_error=0.8000% nfe=0 time=19.8s
+epoch=24 step=11250 loss=0.0008
+epoch=24 step=11300 loss=0.0002
+epoch=24 step=11350 loss=0.0003
+epoch=24 step=11400 loss=0.0014
+epoch=24 step=11450 loss=0.0082
+epoch=24 step=11500 loss=0.0062
+epoch=24 step=11550 loss=0.0010
+epoch=24 step=11600 loss=0.0008
+epoch=24 step=11650 loss=0.0004
+epoch=24 step=11700 loss=0.0027
+[epoch 24] loss=0.0056 test_error=0.7100% nfe=0 time=20.1s
+epoch=25 step=11750 loss=0.0003
+epoch=25 step=11800 loss=0.0009
+epoch=25 step=11850 loss=0.0008
+epoch=25 step=11900 loss=0.0028
+epoch=25 step=11950 loss=0.0006
+epoch=25 step=12000 loss=0.0185
+epoch=25 step=12050 loss=0.0003
+epoch=25 step=12100 loss=0.0041
+epoch=25 step=12150 loss=0.0006
+[epoch 25] loss=0.0074 test_error=0.6000% nfe=0 time=19.8s
+epoch=26 step=12200 loss=0.0006
+epoch=26 step=12250 loss=0.0005
+epoch=26 step=12300 loss=0.0007
+epoch=26 step=12350 loss=0.0014
+epoch=26 step=12400 loss=0.0012
+epoch=26 step=12450 loss=0.0002
+epoch=26 step=12500 loss=0.0002
+epoch=26 step=12550 loss=0.0006
+epoch=26 step=12600 loss=0.0338
+[epoch 26] loss=0.0049 test_error=0.8400% nfe=0 time=19.8s
+epoch=27 step=12650 loss=0.0005
+epoch=27 step=12700 loss=0.0610
+epoch=27 step=12750 loss=0.0009
+epoch=27 step=12800 loss=0.0003
+epoch=27 step=12850 loss=0.0002
+epoch=27 step=12900 loss=0.0401
+epoch=27 step=12950 loss=0.0024
+epoch=27 step=13000 loss=0.0001
+epoch=27 step=13050 loss=0.0331
+epoch=27 step=13100 loss=0.0003
+[epoch 27] loss=0.0062 test_error=0.9000% nfe=0 time=19.8s
+epoch=28 step=13150 loss=0.0013
+epoch=28 step=13200 loss=0.0005
+epoch=28 step=13250 loss=0.0020
+epoch=28 step=13300 loss=0.0002
+epoch=28 step=13350 loss=0.0004
+epoch=28 step=13400 loss=0.0025
+epoch=28 step=13450 loss=0.0068
+epoch=28 step=13500 loss=0.0005
+epoch=28 step=13550 loss=0.0012
+[epoch 28] loss=0.0057 test_error=0.8900% nfe=0 time=25.4s
+epoch=29 step=13600 loss=0.0003
+epoch=29 step=13650 loss=0.0002
+epoch=29 step=13700 loss=0.0001
+epoch=29 step=13750 loss=0.0023
+epoch=29 step=13800 loss=0.0006
+epoch=29 step=13850 loss=0.0002
+epoch=29 step=13900 loss=0.0012
+epoch=29 step=13950 loss=0.0002
+epoch=29 step=14000 loss=0.0007
+[epoch 29] loss=0.0047 test_error=0.6500% nfe=0 time=21.0s
+epoch=30 step=14050 loss=0.0001
+epoch=30 step=14100 loss=0.0001
+epoch=30 step=14150 loss=0.0002
+epoch=30 step=14200 loss=0.0007
+epoch=30 step=14250 loss=0.0002
+epoch=30 step=14300 loss=0.0032
+epoch=30 step=14350 loss=0.0005
+epoch=30 step=14400 loss=0.0124
+epoch=30 step=14450 loss=0.0007
+epoch=30 step=14500 loss=0.0003
+[epoch 30] loss=0.0046 test_error=0.7600% nfe=0 time=19.9s
+epoch=31 step=14550 loss=0.0137
+epoch=31 step=14600 loss=0.0021
+epoch=31 step=14650 loss=0.0229
+epoch=31 step=14700 loss=0.0043
+epoch=31 step=14750 loss=0.0005
+epoch=31 step=14800 loss=0.0003
+epoch=31 step=14850 loss=0.0087
+epoch=31 step=14900 loss=0.0002
+epoch=31 step=14950 loss=0.0002
+[epoch 31] loss=0.0064 test_error=0.7500% nfe=0 time=20.0s
+epoch=32 step=15000 loss=0.0001
+epoch=32 step=15050 loss=0.0013
+epoch=32 step=15100 loss=0.0006
+epoch=32 step=15150 loss=0.0056
+epoch=32 step=15200 loss=0.0015
+epoch=32 step=15250 loss=0.0002
+epoch=32 step=15300 loss=0.0009
+epoch=32 step=15350 loss=0.0022
+epoch=32 step=15400 loss=0.0004
+[epoch 32] loss=0.0048 test_error=0.6600% nfe=0 time=19.7s
+epoch=33 step=15450 loss=0.0003
+epoch=33 step=15500 loss=0.0001
+epoch=33 step=15550 loss=0.0174
+epoch=33 step=15600 loss=0.0051
+epoch=33 step=15650 loss=0.0111
+epoch=33 step=15700 loss=0.0011
+epoch=33 step=15750 loss=0.0007
+epoch=33 step=15800 loss=0.0004
+epoch=33 step=15850 loss=0.0013
+epoch=33 step=15900 loss=0.0038
+[epoch 33] loss=0.0044 test_error=0.6400% nfe=0 time=19.7s
+epoch=34 step=15950 loss=0.0001
+epoch=34 step=16000 loss=0.0001
+epoch=34 step=16050 loss=0.0002
+epoch=34 step=16100 loss=0.0002
+epoch=34 step=16150 loss=0.0002
+epoch=34 step=16200 loss=0.0002
+epoch=34 step=16250 loss=0.0007
+epoch=34 step=16300 loss=0.0002
+epoch=34 step=16350 loss=0.0003
+[epoch 34] loss=0.0013 test_error=0.5800% nfe=0 time=19.8s
+epoch=35 step=16400 loss=0.0002
+epoch=35 step=16450 loss=0.0001
+epoch=35 step=16500 loss=0.0006
+epoch=35 step=16550 loss=0.0020
+epoch=35 step=16600 loss=0.0004
+epoch=35 step=16650 loss=0.0232
+epoch=35 step=16700 loss=0.0004
+epoch=35 step=16750 loss=0.0277
+epoch=35 step=16800 loss=0.0037
+[epoch 35] loss=0.0055 test_error=0.9700% nfe=0 time=19.8s
+epoch=36 step=16850 loss=0.0111
+epoch=36 step=16900 loss=0.0003
+epoch=36 step=16950 loss=0.0002
+epoch=36 step=17000 loss=0.0001
+epoch=36 step=17050 loss=0.0001
+epoch=36 step=17100 loss=0.0002
+epoch=36 step=17150 loss=0.0019
+epoch=36 step=17200 loss=0.0002
+epoch=36 step=17250 loss=0.0108
+epoch=36 step=17300 loss=0.0005
+[epoch 36] loss=0.0061 test_error=0.9000% nfe=0 time=19.8s
+epoch=37 step=17350 loss=0.0008
+epoch=37 step=17400 loss=0.0030
+epoch=37 step=17450 loss=0.0002
+epoch=37 step=17500 loss=0.0002
+epoch=37 step=17550 loss=0.0007
+epoch=37 step=17600 loss=0.0219
+epoch=37 step=17650 loss=0.0007
+epoch=37 step=17700 loss=0.0099
+epoch=37 step=17750 loss=0.0012
+[epoch 37] loss=0.0046 test_error=0.5300% nfe=0 time=19.7s
+epoch=38 step=17800 loss=0.0004
+epoch=38 step=17850 loss=0.0003
+epoch=38 step=17900 loss=0.0002
+epoch=38 step=17950 loss=0.0003
+epoch=38 step=18000 loss=0.0018
+epoch=38 step=18050 loss=0.0002
+epoch=38 step=18100 loss=0.0002
+epoch=38 step=18150 loss=0.0002
+epoch=38 step=18200 loss=0.0018
+epoch=38 step=18250 loss=0.0826
+[epoch 38] loss=0.0028 test_error=0.5900% nfe=0 time=20.0s
+epoch=39 step=18300 loss=0.0001
+epoch=39 step=18350 loss=0.0031
+epoch=39 step=18400 loss=0.0001
+epoch=39 step=18450 loss=0.0001
+epoch=39 step=18500 loss=0.0001
+epoch=39 step=18550 loss=0.0001
+epoch=39 step=18600 loss=0.0001
+epoch=39 step=18650 loss=0.0004
+epoch=39 step=18700 loss=0.0002
+[epoch 39] loss=0.0006 test_error=0.5100% nfe=0 time=20.2s
+epoch=40 step=18750 loss=0.0002
+epoch=40 step=18800 loss=0.0000
+epoch=40 step=18850 loss=0.0002
+epoch=40 step=18900 loss=0.0002
+epoch=40 step=18950 loss=0.0000
+epoch=40 step=19000 loss=0.0001
+epoch=40 step=19050 loss=0.0001
+epoch=40 step=19100 loss=0.0000
+epoch=40 step=19150 loss=0.0000
+[epoch 40] loss=0.0003 test_error=0.5100% nfe=0 time=20.4s
+epoch=41 step=19200 loss=0.0001
+epoch=41 step=19250 loss=0.0000
+epoch=41 step=19300 loss=0.0000
+epoch=41 step=19350 loss=0.0003
+epoch=41 step=19400 loss=0.0001
+epoch=41 step=19450 loss=0.0001
+epoch=41 step=19500 loss=0.0000
+epoch=41 step=19550 loss=0.0002
+epoch=41 step=19600 loss=0.0010
+epoch=41 step=19650 loss=0.0012
+[epoch 41] loss=0.0043 test_error=1.3900% nfe=0 time=20.0s
+epoch=42 step=19700 loss=0.0019
+epoch=42 step=19750 loss=0.0065
+epoch=42 step=19800 loss=0.0016
+epoch=42 step=19850 loss=0.0032
+epoch=42 step=19900 loss=0.0091
+epoch=42 step=19950 loss=0.0050
+epoch=42 step=20000 loss=0.0006
+epoch=42 step=20050 loss=0.0002
+epoch=42 step=20100 loss=0.0024
+[epoch 42] loss=0.0055 test_error=0.9800% nfe=0 time=20.1s
+epoch=43 step=20150 loss=0.0002
+epoch=43 step=20200 loss=0.0045
+epoch=43 step=20250 loss=0.0008
+epoch=43 step=20300 loss=0.0003
+epoch=43 step=20350 loss=0.0081
+epoch=43 step=20400 loss=0.0002
+epoch=43 step=20450 loss=0.0276
+epoch=43 step=20500 loss=0.0005
+epoch=43 step=20550 loss=0.0001
+[epoch 43] loss=0.0050 test_error=0.7400% nfe=0 time=19.9s
+epoch=44 step=20600 loss=0.0005
+epoch=44 step=20650 loss=0.0001
+epoch=44 step=20700 loss=0.0002
+epoch=44 step=20750 loss=0.0001
+epoch=44 step=20800 loss=0.0002
+epoch=44 step=20850 loss=0.0004
+epoch=44 step=20900 loss=0.0071
+epoch=44 step=20950 loss=0.0031
+epoch=44 step=21000 loss=0.0019
+epoch=44 step=21050 loss=0.0160
+[epoch 44] loss=0.0039 test_error=0.7300% nfe=0 time=20.4s
+epoch=45 step=21100 loss=0.0001
+epoch=45 step=21150 loss=0.0001
+epoch=45 step=21200 loss=0.0001
+epoch=45 step=21250 loss=0.0001
+epoch=45 step=21300 loss=0.0001
+epoch=45 step=21350 loss=0.0001
+epoch=45 step=21400 loss=0.0001
+epoch=45 step=21450 loss=0.0010
+epoch=45 step=21500 loss=0.0001
+[epoch 45] loss=0.0021 test_error=0.9200% nfe=0 time=19.0s
+epoch=46 step=21550 loss=0.0001
+epoch=46 step=21600 loss=0.0003
+epoch=46 step=21650 loss=0.0002
+epoch=46 step=21700 loss=0.0001
+epoch=46 step=21750 loss=0.0003
+epoch=46 step=21800 loss=0.0001
+epoch=46 step=21850 loss=0.0443
+epoch=46 step=21900 loss=0.0004
+epoch=46 step=21950 loss=0.0012
+[epoch 46] loss=0.0030 test_error=0.7100% nfe=0 time=19.0s
+epoch=47 step=22000 loss=0.0002
+epoch=47 step=22050 loss=0.0002
+epoch=47 step=22100 loss=0.0001
+epoch=47 step=22150 loss=0.0001
+epoch=47 step=22200 loss=0.0001
+epoch=47 step=22250 loss=0.0001
+epoch=47 step=22300 loss=0.0001
+epoch=47 step=22350 loss=0.0001
+epoch=47 step=22400 loss=0.0000
+epoch=47 step=22450 loss=0.0000
+[epoch 47] loss=0.0004 test_error=0.6100% nfe=0 time=19.0s
+epoch=48 step=22500 loss=0.0000
+epoch=48 step=22550 loss=0.0000
+epoch=48 step=22600 loss=0.0000
+epoch=48 step=22650 loss=0.0000
+epoch=48 step=22700 loss=0.0000
+epoch=48 step=22750 loss=0.0000
+epoch=48 step=22800 loss=0.0001
+epoch=48 step=22850 loss=0.0001
+epoch=48 step=22900 loss=0.0001
+[epoch 48] loss=0.0002 test_error=0.6100% nfe=0 time=18.8s
+epoch=49 step=22950 loss=0.0000
+epoch=49 step=23000 loss=0.0000
+epoch=49 step=23050 loss=0.0000
+epoch=49 step=23100 loss=0.0000
+epoch=49 step=23150 loss=0.0000
+epoch=49 step=23200 loss=0.0004
+epoch=49 step=23250 loss=0.0000
+epoch=49 step=23300 loss=0.0000
+epoch=49 step=23350 loss=0.0000
+epoch=49 step=23400 loss=0.0000
+[epoch 49] loss=0.0002 test_error=0.6000% nfe=0 time=18.8s

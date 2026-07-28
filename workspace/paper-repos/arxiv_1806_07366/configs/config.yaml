@@ -1,0 +1,63 @@
+# =============================================================================
+# Neural Ordinary Differential Equations — full hyperparameter config
+# Paper: Chen, Rubanova, Bettencourt, Duvenaud, arXiv:1806.07366 (NeurIPS 2018)
+#
+# Values annotated "# ASSUMED: ..." were NOT explicitly stated in the parsed
+# paper text (SIR confidence < 0.7 for that field). See
+# sir-registry/arxiv_1806_07366/sir.json -> implementation_assumptions / ambiguities
+# for the full reasoning behind each assumption.
+# =============================================================================
+
+model:
+  variant: odenet                # one of: resnet, rknet, odenet
+  hidden_channels: 64             # ASSUMED: not stated explicitly; typical width for MNIST conv nets
+  downsample_output_channels: 64
+  downsample_output_spatial_size: 6   # ASSUMED: exact spatial size after downsampling stem not given (SIR confidence 0.4)
+  num_residual_blocks: 6          # Eq./Section 3: "6 standard residual blocks" (SIR confidence 0.85)
+
+  latent_dim: 4                  # Section 5.1: "We use a 4-dimensional latent space." (SIR confidence 0.95)
+  encoder_hidden_units: 25       # Section 5.1: "recognition network is an RNN with 25 hidden units" (SIR confidence 0.85)
+  rnn_cell_type: gru             # ASSUMED: cell type (GRU/LSTM/vanilla) not specified (SIR confidence 0.4)
+  dynamics_hidden_units: 20      # Section 5.1: "one-hidden-layer network with 20 hidden units" (SIR confidence 0.95)
+  decoder_hidden_units: 20       # Section 5.1: "neural network with one hidden layer with 20 hidden units" (SIR confidence 0.9)
+
+  cnf_hidden_units: 64           # Section 4.1 max-likelihood experiment: "64 hidden units for CNF" (SIR confidence 0.9)
+
+  ode_solver: dopri5             # ASSUMED: paper used implicit Adams (LSODE/VODE); dopri5 is the torchdiffeq default (SIR confidence 0.6)
+  rtol_classification: 1.0e-3    # Section 6, "Setting tolerances": explicitly stated (SIR confidence 0.95)
+  atol_classification: 1.0e-3
+  rtol_density: 1.0e-5           # Section 6: explicitly stated (SIR confidence 0.95)
+  atol_density: 1.0e-5
+  rtol_sequence: 1.5e-8          # Section 6: explicitly stated, default for sequence modeling (SIR confidence 0.95)
+  atol_sequence: 1.5e-8
+
+training:
+  optimizer: adam                # ASSUMED for classification (SIR confidence 0.4); EXPLICIT for CNF density-matching (SIR confidence 0.95)
+  learning_rate: 1.0e-3           # ASSUMED: not stated for classification experiments (SIR confidence 0.4)
+  weight_decay: 0.0
+  batch_size: 128                 # ASSUMED: not stated in parsed text (SIR confidence 0.3)
+  epochs: 50                      # ASSUMED: not stated; enough to reach reported test errors on MNIST-scale models
+  cnf_density_matching_iterations: 10000   # Section 4.1: explicitly stated (SIR confidence 0.95)
+  nf_baseline_iterations: 500000           # Section 4.1: explicitly stated, NF baseline only (SIR confidence 0.95)
+  gradient_clipping: null
+  mixed_precision: false
+  log_every_n_steps: 50
+  checkpoint_every_n_steps: 500
+  seed: 0
+  deterministic: false           # setting true improves reproducibility but may slow training
+
+data:
+  mnist_path: ./data/mnist
+  spiral_num_trajectories: 1000        # Section 5.1: "dataset of 1000 2-dimensional spirals" (SIR confidence 0.9)
+  spiral_timesteps: 100                # Section 5.1: "sampled at 100 equally-spaced timesteps" (SIR confidence 0.9)
+  spiral_observation_noise_std: 0.1    # ASSUMED: paper states noise is added but gives no numeric std (SIR: qualitative only)
+  spiral_subsample_sizes: [30, 50, 100]  # Table 2: "# Observations 30/100 50/100 100/100" (SIR confidence 0.9)
+  num_workers: 4
+
+evaluation:
+  metrics: [test_error, kl_divergence, predictive_rmse, nfe]
+  mnist_test_split: standard
+
+hardware:
+  device: cuda_if_available
+  precision: float32

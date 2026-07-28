@@ -1,0 +1,33 @@
+{
+  "paper_id": "arxiv_1806_07366",
+  "comparison_date": "2026-07-27",
+  "comparison_version": 2,
+  "previous_version_archived_at": "comparison/v1_archive/",
+  "reproducibility_score": 0.34,
+  "score_confidence": "high",
+  "score_unchanged_from_v1": true,
+  "metrics_compared": 5,
+  "metrics_matched": 5,
+  "deviation_summary": {
+    "excellent": 0,
+    "good": 0,
+    "moderate": 1,
+    "significant": 2,
+    "critical": 2
+  },
+  "raw_metric_improvement": {
+    "note": "The 0.34 score is unchanged from v1 because the scoring formula saturates any deviation beyond 50% to the same minimum contribution. The underlying RMSE values improved substantially between v1 and v2 and should not be considered 'no progress'.",
+    "latent_ode_rmse_n_obs_30": {"v1": 1.6506, "v2": 0.5275, "improvement_pct": 68.0},
+    "latent_ode_rmse_n_obs_50": {"v1": 1.6097, "v2": 1.2448, "improvement_pct": 22.7},
+    "latent_ode_rmse_n_obs_100": {"v1": 1.6482, "v2": 0.7294, "improvement_pct": 55.7}
+  },
+  "hallucination_count": {
+    "structural": 0,
+    "parametric": 2,
+    "omission": 1
+  },
+  "sir_version_used": 1,
+  "requires_manual_review": true,
+  "convergence_status": "not_converged",
+  "notes": "v2 comparison follows a code fix (obs_noise_std threading) and extended training (50->300 epochs) for the latent ODE experiment only; classification results are unchanged/not rerun. All three latent-ODE runs (n_obs=30/50/100) were still improving at epoch 299 (not converged), so v2 values should be treated as a progress checkpoint. A new anomaly was identified: RMSE does not follow the paper's expected monotonic improvement with more observations (n_obs=30 outperforms n_obs=100, which outperforms n_obs=50) -- likely due to un-seeded train/test splits across separate runs and/or differing convergence state at the shared epoch-299 cutoff. See hallucination_report.md and benchmark_comparison.md for full detail and recommended next steps."
+}

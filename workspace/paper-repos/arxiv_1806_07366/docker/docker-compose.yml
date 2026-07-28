@@ -1,0 +1,31 @@
+version: "3.8"
+
+services:
+  train:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    volumes:
+      - ../checkpoints:/workspace/checkpoints
+      - ../results:/workspace/results
+      - ../data:/workspace/data
+    command: ["python", "train_classification.py", "--variant", "odenet", "--config", "configs/config.yaml"]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  notebook:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    volumes:
+      - ../notebooks:/workspace/notebooks
+      - ../checkpoints:/workspace/checkpoints
+      - ../data:/workspace/data
+    ports:
+      - "8888:8888"
+    command: ["jupyter", "notebook", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root"]
